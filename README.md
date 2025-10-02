@@ -12,41 +12,22 @@ Podcasteur transforme vos enregistrements audio bruts en podcasts montés de qua
 
 ```
 podcasteur/
-├── .github/
-│   └── workflows/
-│       └── release.yml                    # ✅ Workflow CI/CD pour releases
-│
 ├── src/
-│   ├── __init__.py                        # ✅ Initialisation du package
-│   ├── cli.py                             # ✅ Interface ligne de commande
-│   ├── editor.py                          # ✅ Orchestration des workflows
-│   ├── audio_processor.py                 # ✅ Traitement audio
-│   ├── transcriber.py                     # ✅ Transcription Whisper
-│   ├── ai_analyzer.py                     # ✅ Analyse IA avec Claude
-│   └── decoupage.py                       # ✅ Gestion des découpages manuels
-│
+│   ├── __init__.py
+│   ├── cli.py              # Interface ligne de commande
+│   ├── editor.py           # Orchestration des workflows
+│   ├── audio_processor.py  # Traitement audio
+│   ├── transcriber.py      # Transcription Whisper
+│   ├── ai_analyzer.py      # Analyse IA avec Claude
+│   └── decoupage.py        # Gestion des découpages manuels
 ├── config/
-│   └── default_config.yaml                # ✅ Configuration par défaut
-│
-├── scripts/
-│   └── test_release.sh                    # ✅ Test local de release
-│
-├── docs/
-│   └── RELEASE_CHECKLIST.md               # ✅ Checklist détaillée pour releases
-│
+│   └── default_config.yaml # Configuration par défaut
 ├── tests/
-│   └── (à créer selon vos besoins)
-│
-├── .env.example                           # ✅ Exemple de variables d'environnement
-├── .gitignore                             # ✅ Fichiers à ignorer par Git
-├── LICENSE                                # ✅ Licence MIT
-├── Makefile                               # ✅ Commandes utiles
-├── README.md                              # ✅ Documentation principale
-├── QUICKSTART.md                          # ✅ Guide de démarrage rapide
-├── CONTRIBUTING.md                        # ✅ Guide de contribution
-├── RELEASE_NOTES.md                       # ✅ Notes de version
-├── requirements.txt                       # ✅ Dépendances Python
-└── setup.py                               # ✅ Configuration du package
+│   └── ...                 # Tests unitaires
+├── .env.example            # Exemple de configuration
+├── requirements.txt        # Dépendances Python
+├── setup.py               # Installation du package
+└── README.md              # Documentation
 ```
 
 ---
@@ -395,11 +376,17 @@ Obtenez votre clé API sur : https://console.anthropic.com
 Transcription + analyse IA + montage automatique :
 
 ```bash
-# Exemple simple
-podcasteur auto enreg_01.wav enreg_02.wav enreg_03.wav
+# Exemple simple - dossier complet
+podcasteur auto audio/ --duree 5
 
-# Avec options
-podcasteur auto *.wav --duree 5 --ton "dynamique et informatif" --sortie mon_podcast/
+# Avec fichiers spécifiques
+podcasteur auto enreg_01.wav enreg_02.wav --duree 5 --ton "dynamique"
+
+# Avec wildcards
+podcasteur auto *.wav --duree 5 --sortie mon_podcast/
+
+# Avec transcription existante (skip Whisper, plus rapide)
+podcasteur auto audio/ --transcription transcript.txt --duree 5
 
 # Avec configuration personnalisée
 podcasteur auto *.wav --config ma_config.yaml
@@ -408,8 +395,13 @@ podcasteur auto *.wav --config ma_config.yaml
 **Options :**
 - `--duree, -d` : Durée cible en minutes
 - `--ton, -t` : Ton souhaité (ex: "détendu et conversationnel")
+- `--transcription` : Fichier de transcription existant (pour skip la transcription Whisper)
 - `--sortie, -o` : Dossier de sortie (défaut: `sortie/`)
 - `--config, -c` : Fichier de configuration personnalisé
+
+**Sortie générée :**
+- `podcast_titre_20241003_143052.mp3` - Le podcast final
+- `podcast_titre_20241003_143052.json` - Les métadonnées complètes
 
 ### Mode Manuel (découpage prédéfini)
 
@@ -515,15 +507,36 @@ validation:
 ### Cas d'usage 1 : Reportage au pliage du Bidul
 
 ```bash
-# Workflow automatique
-podcasteur auto mix1.wav --duree 5 --ton "détendu et convivial" --sortie bidul_octobre/
+# Workflow automatique avec dossier
+podcasteur auto audio_bidul/ --duree 5 --ton "détendu et convivial" --sortie bidul_octobre/
 
 # L'outil va :
-# 1. Transcrire l'audio
-# 2. Analyser avec Claude
-# 3. Proposer 3 découpages
-# 4. Vous laisser choisir
-# 5. Créer le montage final
+# 1. Concaténer tous les fichiers du dossier
+# 2. Transcrire l'audio
+# 3. Analyser avec Claude
+# 4. Proposer 3 découpages
+# 5. Vous laisser choisir
+# 6. Créer le montage final avec métadonnées
+```
+
+### Cas d'usage 2 : Réutiliser une transcription
+
+```bash
+# Si vous avez déjà transcrit avec Whisper
+podcasteur auto audio/ --transcription ma_transcription.txt --duree 5
+
+# Gain de temps : skip la transcription (peut prendre plusieurs minutes)
+```
+
+### Cas d'usage 3 : Rééditer un podcast
+
+```bash
+# Utiliser le JSON généré comme base
+# Le fichier podcast_20241003_143052.json contient tous les segments
+
+# Éditer le JSON pour ajuster les découpes
+# Puis relancer en workflow manuel
+podcasteur manuel podcast_20241003_143052.json audio/ --sortie nouvelle_version/
 ```
 
 ### Cas d'usage 2 : Interview en plusieurs parties

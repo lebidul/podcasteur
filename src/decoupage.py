@@ -66,6 +66,7 @@ class Decoupage:
             # Format métadonnées
             segment['debut'] = segment['debut_source']
             segment['fin'] = segment['fin_source']
+            segment['fichier'] = segment['fichier_source']
 
         champs_requis = ['fichier', 'debut', 'fin']
         
