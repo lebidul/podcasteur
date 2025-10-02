@@ -62,6 +62,11 @@ class Decoupage:
     
     def _valider_segment(self, segment: Dict, index: int):
         """Valide un segment individuel"""
+        if 'debut_source' in segment and 'fin_source' in segment:
+            # Format métadonnées
+            segment['debut'] = segment['debut_source']
+            segment['fin'] = segment['fin_source']
+
         champs_requis = ['fichier', 'debut', 'fin']
         
         for champ in champs_requis:
@@ -188,7 +193,7 @@ class Decoupage:
             debut_ms = int(segment['debut'] * 1000)
             fin_ms = int(segment['fin'] * 1000)
             audio_segment = audio_source[debut_ms:fin_ms]
-            
+
             segments_prepares.append({
                 'audio': audio_segment,
                 'debut': segment['debut'],
