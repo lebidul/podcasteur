@@ -9,8 +9,8 @@ from typing import Optional, List
 import os
 from dotenv import load_dotenv
 
-from .editor import PodcastEditor
-from .decoupage import Decoupage
+from src.editor import PodcastEditor
+from src.decoupage import Decoupage
 
 
 # Charger les variables d'environnement

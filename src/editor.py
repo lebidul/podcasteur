@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import List, Optional, Dict
 import json
 
-from .audio_processor import AudioProcessor
-from .transcriber import Transcriber
-from .ai_analyzer import AIAnalyzer
-from .decoupage import Decoupage
+from src.audio_processor import AudioProcessor
+from src.transcriber import Transcriber
+from src.ai_analyzer import AIAnalyzer
+from src.decoupage import Decoupage
 
 
 class PodcastEditor:

@@ -5,11 +5,11 @@ Podcasteur - Éditeur de podcasts automatisé avec IA
 __version__ = '1.0.0'
 __author__ = 'Projet Bidul'
 
-from .editor import PodcastEditor
-from .audio_processor import AudioProcessor
-from .transcriber import Transcriber
-from .ai_analyzer import AIAnalyzer
-from .decoupage import Decoupage
+from src.editor import PodcastEditor
+from src.audio_processor import AudioProcessor
+from src.transcriber import Transcriber
+from src.ai_analyzer import AIAnalyzer
+from src.decoupage import Decoupage
 
 __all__ = [
     'PodcastEditor',
