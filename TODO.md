@@ -5,3 +5,4 @@
 - [ ] Ready for audacity (avec les balises)
 - [ ] Séquençage dans dossier séparé
 - [ ] Sortie dans dossier avec timestamp pour ne pas overwrite ?
+- [ ] Transcription avec identification speaker (https://scalastic.io/en/whisper-pyannote-ultimate-speech-transcription/)

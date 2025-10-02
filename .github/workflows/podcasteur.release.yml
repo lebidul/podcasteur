@@ -87,7 +87,7 @@ jobs:
           cp setup.py "${package_name}/"
           cp README.md "${package_name}/"
           cp QUICKSTART.md "${package_name}/"
-          cp .env.example "${package_name}/"
+          cp .env "${package_name}/"
           cp LICENSE "${package_name}/" 2>/dev/null || echo "Pas de LICENSE trouvée"
           
           # Copier les wheels/tar.gz du build
