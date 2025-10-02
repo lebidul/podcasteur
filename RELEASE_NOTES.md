@@ -41,7 +41,7 @@ Première version publique de Podcasteur, l'éditeur de podcasts automatisé ave
 
 ### 🙏 Remerciements
 
-Développé pour le collectif du Bidul et le Blue Zinc au Mans.
+Développé pour le collectif du Bidul au Mans.
 
 ---
 
