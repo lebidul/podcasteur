@@ -12,7 +12,7 @@ audio:
   duree_fondu: 500
 
   # Silence entre segments (en millisecondes)
-  silence_entre_segments: 1000
+  silence_entre_segments: 500
 
   # Normalisation audio
   normaliser: true

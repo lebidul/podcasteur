@@ -91,11 +91,16 @@ def cli():
     help='Ton souhaité (ex: "informatif et dynamique")'
 )
 @click.option(
+    '--transcription',
+    type=click.Path(exists=True),
+    help='Fichier de transcription existant (skip la transcription Whisper)'
+)
+@click.option(
     '--config', '-c',
     type=click.Path(exists=True),
     help='Fichier de configuration personnalisé'
 )
-def auto(entrees, sortie, duree, ton, config):
+def auto(entrees, sortie, duree, ton, transcription, config):
     """
     Workflow automatique : transcription + analyse IA
 
@@ -111,6 +116,8 @@ def auto(entrees, sortie, duree, ton, config):
       podcasteur auto dossier_audio/ --duree 5 --ton "dynamique"
 
       podcasteur auto audio/*.wav --duree 3
+
+      podcasteur auto audio/ --transcription transcript.txt --duree 5
     """
     click.echo("\n🎙️ Podcasteur - Workflow Automatique\n")
 
@@ -142,6 +149,13 @@ def auto(entrees, sortie, duree, ton, config):
 
     dossier_sortie = Path(sortie)
 
+    # Feature 3: Gestion transcription existante
+    transcription_path = Path(transcription) if transcription else None
+
+    if transcription_path:
+        click.echo(f"\n📄 Utilisation de la transcription : {transcription_path.name}")
+        click.echo("   ⏩ La transcription Whisper sera ignorée\n")
+
     # Créer l'éditeur
     editor = PodcastEditor(config_dict, cle_api)
 
@@ -151,7 +165,8 @@ def auto(entrees, sortie, duree, ton, config):
             fichiers_path,
             dossier_sortie,
             duree_cible=duree,
-            ton=ton
+            ton=ton,
+            transcription_existante=transcription_path
         )
 
         click.echo(f"\n✅ Succès ! Podcast créé : {fichier_final}")

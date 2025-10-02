@@ -72,23 +72,26 @@ podcasteur manuel mon_decoupage.json dossier_audio/
 cp .env.example .env
 nano .env  # Ajouter votre clé API Anthropic
 
-# 2. Lancer le workflow automatique
-podcasteur auto enreg1.wav enreg2.wav --duree 5
+# 2. Lancer le workflow automatique - dossier complet
+podcasteur auto audio/ --duree 5
+
+# Ou avec transcription existante (plus rapide)
+podcasteur auto audio/ --transcription ma_transcription.txt --duree 5
 
 # 3. Choisir parmi les suggestions
 # L'outil vous propose 3 découpages, choisissez celui qui vous plaît
 ```
 
-✅ **Votre podcast est créé automatiquement !**
+✅ **Votre podcast est créé automatiquement avec métadonnées JSON !**
 
 ---
 
 ## 📝 Exemples pratiques
 
-### Cas 1 : Plusieurs fichiers à assembler
+### Cas 1 : Dossier complet
 
 ```bash
-podcasteur auto *.wav --sortie mon_podcast/
+podcasteur auto ./mes_enregistrements/ --duree 5 --sortie mon_podcast/
 ```
 
 ### Cas 2 : Podcast de 3 minutes, ton détendu
@@ -97,21 +100,19 @@ podcasteur auto *.wav --sortie mon_podcast/
 podcasteur auto audio/*.wav --duree 3 --ton "détendu et conversationnel"
 ```
 
-### Cas 3 : Découpage précis et manuel
+### Cas 3 : Réutiliser une transcription (gain de temps)
 
 ```bash
-# Créer le découpage
-cat > decoupage.json << EOF
-{
-  "segments": [
-    {"fichier": "audio.wav", "debut": 10.0, "fin": 70.0, "description": "Intro"},
-    {"fichier": "audio.wav", "debut": 120.0, "fin": 200.0, "description": "Corps"}
-  ]
-}
-EOF
+# Vous avez déjà une transcription ? Skip Whisper !
+podcasteur auto audio/ --transcription transcript.txt --duree 5
+```
 
-# Monter
-podcasteur manuel decoupage.json .
+### Cas 4 : Rééditer avec le JSON généré
+
+```bash
+# Le podcast génère un fichier .json avec tous les segments
+# Éditez-le puis relancez en mode manuel
+podcasteur manuel podcast_20241003_143052.json audio/
 ```
 
 ---

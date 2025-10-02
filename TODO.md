@@ -1,7 +1,8 @@
-- [ ] Utilisation logging + debug mode
+- [ ] Avoir banque de sons prédéfinis (exemple générique, virgule, etc..)
+- [ ] Choix suggestions: choix multiple possible et ajouter: soumettre 1 découpage perso, permettre la possibilité de relancer un prompt à pour qu'iel affine ses suggestions claude api
+- [ ] Si possible output audacity project (avec le track splitté selon le découpage de sortie) pour pouvoir éditer la sortie dans audacity directement
+- [x] Sortie dans dossier sortie/ avec timestamp pour ne pas overwrite ?
+- [ ] Si c'est utile pour la précision de la réponse de claude api: Transcription avec identification speaker (https://scalastic.io/en/whisper-pyannote-ultimate-speech-transcription/) 
+- [x] Fichier timestamp et durée en sortie avec les segments pour connaître où on en est écoutant la sortie : prendre le format de decoupage.json actuel et y ajouter attributs optionnels (début_output,fin_output,durée)
+- [x] Workflow semi-automatique qui permet de skip la transcription en fournissant un fichier de transcription
 - [ ] GUI
-- [ ] Avoir banque de sons prédéfinis
-- [ ] Choix suggestions multiple + 1 perso
-- [ ] Ready for audacity (avec les balises)
-- [ ] Séquençage dans dossier séparé
-- [ ] Sortie dans dossier avec timestamp pour ne pas overwrite ?
