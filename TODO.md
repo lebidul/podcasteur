@@ -1,0 +1,5 @@
+- [ ] Utilisation logging + debug mode
+- [ ] GUI
+- [ ] Avoir banque de sons prédéfinis
+- [ ] Choix suggestions multiple + 1 perso
+- [ ] Ready for audacity
