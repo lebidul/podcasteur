@@ -133,22 +133,46 @@ Génère maintenant les {nombre_suggestions} suggestions."""
             fin = self._formater_temps(seg['fin'])
             lignes.append(f"[{debut} - {fin}] {seg['texte']}")
         return "\n".join(lignes)
-    
+
     def _parser_reponse(self, texte_reponse: str) -> List[Dict]:
         """Parse la réponse JSON de Claude"""
         try:
-            # Essayer d'extraire le JSON de la réponse (au cas où il y aurait du texte en plus)
-            idx_debut = texte_reponse.find('{')
-            idx_fin = texte_reponse.rfind('}') + 1
-            
+            # Nettoyer les balises markdown si présentes
+            texte = texte_reponse.strip()
+
+            # Supprimer ```json au début et ``` à la fin
+            if texte.startswith('```'):
+                # Trouver la première ligne (qui contient ```json ou juste ```)
+                premiere_ligne = texte.split('\n')[0]
+                texte = texte[len(premiere_ligne):].strip()
+
+                # Supprimer ``` de fin
+                if texte.endswith('```'):
+                    texte = texte[:-3].strip()
+
+            # Essayer d'extraire le JSON
+            idx_debut = texte.find('{')
+            idx_fin = texte.rfind('}') + 1
+
+            # Si on trouve des crochets avant les accolades, c'est un array
+            idx_debut_array = texte.find('[')
+            if idx_debut_array != -1 and idx_debut_array < idx_debut:
+                idx_debut = idx_debut_array
+                idx_fin = texte.rfind(']') + 1
+
             if idx_debut == -1 or idx_fin == 0:
                 raise ValueError("Aucun JSON trouvé dans la réponse")
-            
-            texte_json = texte_reponse[idx_debut:idx_fin]
+
+            texte_json = texte[idx_debut:idx_fin]
             donnees = json.loads(texte_json)
-            
+
+            # Si c'est un array direct, retourner tel quel
+            if isinstance(donnees, list):
+                return donnees
+
+            # Sinon chercher la clé 'suggestions'
             return donnees.get('suggestions', [])
-            
+
         except json.JSONDecodeError as e:
             print(f"❌ Erreur lors du parsing de la réponse Claude : {e}")
             print(f"Texte de la réponse : {texte_reponse[:500]}...")
