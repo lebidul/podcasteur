@@ -6,3 +6,4 @@
 - [x] Fichier timestamp et durée en sortie avec les segments pour connaître où on en est écoutant la sortie : prendre le format de decoupage.json actuel et y ajouter attributs optionnels (début_output,fin_output,durée)
 - [x] Workflow semi-automatique qui permet de skip la transcription en fournissant un fichier de transcription
 - [ ] GUI
+- proposer fichier concaténé pour éviter l'étape de concaténation
