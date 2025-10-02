@@ -1,0 +1,83 @@
+# Podcasteur - Configuration par défaut
+
+# Paramètres audio
+audio:
+  # Format d'export final
+  format_export: "mp3"  # Options: mp3, wav, ogg
+
+  # Qualité audio (pour MP3)
+  debit: "192k"  # Options: 128k, 192k, 256k, 320k
+
+  # Durée des fondus (en millisecondes)
+  duree_fondu: 500
+
+  # Silence entre segments (en millisecondes)
+  silence_entre_segments: 1000
+
+  # Normalisation audio
+  normaliser: true
+
+# Paramètres de transcription
+transcription:
+  # Modèle Whisper à utiliser
+  modele: "base"  # Options: tiny, base, small, medium, large
+  # tiny: rapide mais moins précis
+  # base: bon compromis (recommandé pour commencer)
+  # small: meilleure précision
+  # medium/large: très précis mais lent
+
+  # Langue (détection automatique si null)
+  langue: "fr"
+
+  # Dossier de sauvegarde des transcriptions
+  dossier_sortie: "transcriptions"
+
+# Paramètres IA (Claude)
+analyse_ia:
+  # Modèle Claude à utiliser
+  modele: "claude-sonnet-4-5-20250929"
+
+  # Durée souhaitée du podcast final (en minutes)
+  duree_cible: 5
+
+  # Ton/style souhaité
+  ton: "informatif et dynamique"
+  # Options suggérées:
+  # - "informatif et dynamique"
+  # - "détendu et conversationnel"
+  # - "professionnel et concis"
+  # - "créatif et narratif"
+
+  # Nombre de suggestions à générer
+  nombre_suggestions: 3
+
+  # Température de génération (0.0 = déterministe, 1.0 = créatif)
+  temperature: 0.7
+
+# Paramètres CLI
+cli:
+  # Afficher le progrès détaillé
+  verbeux: true
+
+  # Sauvegarder les fichiers intermédiaires
+  garder_fichiers_intermediaires: true
+
+  # Dossier de sortie par défaut
+  dossier_sortie: "sortie"
+
+# Paramètres de tri des fichiers
+tri_fichiers:
+  # Méthode de tri: "nom" ou "date"
+  methode: "nom"  # Options: nom, date
+
+  # Ordre: "asc" ou "desc"
+  ordre: "asc"
+
+# Validation
+validation:
+  # Vérifier que les timestamps sont dans la durée du fichier
+  verifier_timestamps: true
+
+  # Tolérance pour les timestamps (en secondes)
+  # Si un timestamp dépasse de moins que cette valeur, il sera ajusté
+  tolerance_timestamps: 0.5

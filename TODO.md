@@ -1,0 +1,7 @@
+- [ ] Utilisation logging + debug mode
+- [ ] GUI
+- [ ] Avoir banque de sons prédéfinis
+- [ ] Choix suggestions multiple + 1 perso
+- [ ] Ready for audacity (avec les balises)
+- [ ] Séquençage dans dossier séparé
+- [ ] Sortie dans dossier avec timestamp pour ne pas overwrite ?

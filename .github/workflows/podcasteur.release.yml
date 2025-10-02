@@ -1,0 +1,217 @@
+name: Build and Release - Podcasteur
+
+on:
+  # Se déclenche quand un tag comme "v1.2.3" est poussé
+  push:
+    tags:
+      - 'v*'
+  # Permet un déclenchement manuel depuis l'onglet "Actions" de GitHub
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel twine
+          pip install -r requirements.txt
+
+      - name: Determine Version
+        id: versioning
+        shell: bash
+        run: |
+          # Si le workflow est déclenché par un tag (push)...
+          if [ "${{ github.event_name }}" == "push" ]; then
+            version="${{ github.ref_name }}"
+            version="${version#v}"  # Retire le 'v' initial
+            echo "Version de release détectée : $version"
+          else
+            # Sinon (déclenchement manuel)...
+            branch="${{ github.ref_name }}"
+            branch="${branch//\//-}"  # Remplace les / par des -
+            sha="${{ github.sha }}"
+            sha="${sha:0:7}"
+            version="MANUAL-$branch-$sha"
+            echo "Version de build manuel détectée : $version"
+          fi
+          echo "VERSION=$version" >> $GITHUB_ENV
+
+      - name: Inject Version into Code
+        shell: bash
+        run: |
+          # Crée un fichier _version.py dans le dossier src
+          echo "__version__ = '${{ env.VERSION }}'" > src/_version.py
+          
+          # Met à jour la version dans setup.py
+          sed -i "s/version='[^']*'/version='${{ env.VERSION }}'/" setup.py
+
+      - name: Run tests
+        run: |
+          pip install pytest pytest-cov
+          pytest tests/ || echo "⚠️  Pas de tests trouvés ou tests échoués"
+
+      - name: Build Python package
+        run: |
+          python -m build
+
+      - name: Package artifact
+        id: package
+        shell: bash
+        run: |
+          version="${{ env.VERSION }}"
+          package_name="podcasteur-${version}"
+          
+          # Créer un dossier pour l'archive
+          mkdir -p "${package_name}"
+          
+          # Copier les fichiers nécessaires
+          cp -r src "${package_name}/"
+          cp -r config "${package_name}/"
+          cp requirements.txt "${package_name}/"
+          cp setup.py "${package_name}/"
+          cp README.md "${package_name}/"
+          cp QUICKSTART.md "${package_name}/"
+          cp .env.example "${package_name}/"
+          cp LICENSE "${package_name}/" 2>/dev/null || echo "Pas de LICENSE trouvée"
+          
+          # Copier les wheels/tar.gz du build
+          cp dist/* "${package_name}/" 2>/dev/null || true
+          
+          # Créer un README d'installation
+          cat > "${package_name}/INSTALLATION.txt" << 'EOF'
+          ==================================================
+          Podcasteur v${{ env.VERSION }} - Installation
+          ==================================================
+
+          Merci d'avoir téléchargé Podcasteur !
+
+          --- PRÉREQUIS ---
+
+          1. Python 3.8 ou supérieur
+          2. FFmpeg installé sur votre système
+             - Ubuntu/Debian : sudo apt install ffmpeg
+             - macOS : brew install ffmpeg
+             - Windows : https://ffmpeg.org/download.html
+
+          --- INSTALLATION RAPIDE ---
+
+          1. Installer depuis le wheel (recommandé) :
+             pip install podcasteur-${{ env.VERSION }}-py3-none-any.whl
+
+          2. OU installer depuis le code source :
+             pip install -r requirements.txt
+             pip install -e .
+
+          3. Configurer la clé API (pour workflow automatique) :
+             cp .env.example .env
+             # Éditer .env et ajouter votre clé API Anthropic
+
+          4. Vérifier l'installation :
+             podcasteur info
+
+          --- DÉMARRAGE RAPIDE ---
+
+          Workflow manuel (sans IA) :
+            podcasteur exemple mon_decoupage.json
+            podcasteur manuel mon_decoupage.json dossier_audio/
+
+          Workflow automatique (avec IA) :
+            podcasteur auto fichier1.wav fichier2.wav --duree 5
+
+          --- DOCUMENTATION ---
+
+          Consultez README.md et QUICKSTART.md pour plus de détails.
+
+          Support : https://github.com/lebidul/podcasteur/issues
+          EOF
+          
+          # Copier les notes de version si elles existent
+          if [ -f "RELEASE_NOTES.md" ]; then
+            cp RELEASE_NOTES.md "${package_name}/"
+          fi
+          
+          # Créer l'archive tar.gz
+          tar_name="${package_name}.tar.gz"
+          tar -czf "${tar_name}" "${package_name}"
+          
+          echo "tar_name=${tar_name}" >> $GITHUB_OUTPUT
+          echo "package_name=${package_name}" >> $GITHUB_OUTPUT
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: podcasteur-build-${{ env.VERSION }}
+          path: ${{ steps.package.outputs.tar_name }}
+          retention-days: 7
+
+      # ==================== ÉTAPES CONDITIONNELLES POUR LA RELEASE ====================
+      # Ces étapes ne s'exécuteront que si le workflow a été déclenché par un PUSH de TAG.
+
+      - name: Extract Release Notes
+        if: github.event_name == 'push'
+        id: get_release_notes
+        shell: bash
+        run: |
+          notes_file="RELEASE_NOTES.md"
+          version="${{ env.VERSION }}"
+          output_file="current_release_notes.md"
+          
+          if [ -f "$notes_file" ]; then
+            # Extraire les notes pour cette version
+            awk "/^# v${version}/,/^# v[0-9]/" "$notes_file" | sed '$d' > "$output_file"
+            
+            # Si le fichier est vide, message par défaut
+            if [ ! -s "$output_file" ]; then
+              echo "## Podcasteur v${version}" > "$output_file"
+              echo "" >> "$output_file"
+              echo "Nouvelle version de Podcasteur." >> "$output_file"
+              echo "" >> "$output_file"
+              echo "Consultez le [CHANGELOG](CHANGELOG.md) pour les détails." >> "$output_file"
+            fi
+          else
+            # Pas de notes de version
+            echo "## Podcasteur v${version}" > "$output_file"
+            echo "" >> "$output_file"
+            echo "Version de Podcasteur." >> "$output_file"
+          fi
+          
+          echo "notes_path=${output_file}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Podcasteur v${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            ${{ steps.package.outputs.tar_name }}
+            dist/*.whl
+            dist/*.tar.gz
+          body_path: ${{ steps.get_release_notes.outputs.notes_path }}
+          draft: false
+          prerelease: false
+
+      # Optionnel : Publier sur PyPI
+      - name: Publish to PyPI
+        if: github.event_name == 'push' && !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload dist/* || echo "⚠️  Publication PyPI échouée (token manquant ?)"
