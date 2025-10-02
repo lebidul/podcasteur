@@ -42,6 +42,10 @@ env/
 *.local.yaml
 *.local.yml
 
+# Fichiers d'entrées
+audios/
+
+
 # Fichiers de sortie
 sortie/
 output/

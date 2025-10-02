@@ -2,4 +2,5 @@
 - [ ] GUI
 - [ ] Avoir banque de sons prédéfinis
 - [ ] Choix suggestions multiple + 1 perso
-- [ ] Ready for audacity
+- [ ] Ready for audacity (avec les balises)
+- [ ] Séquençage dans dossier séparé
