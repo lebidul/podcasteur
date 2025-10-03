@@ -35,13 +35,13 @@ class PodcastEditor:
             self.ai_analyzer = None
 
     def workflow_automatique(
-            self,
-            fichiers_entree: List[Path],
-            dossier_sortie: Path,
-            duree_cible: Optional[int] = None,
-            ton: Optional[str] = None,
-            transcription_existante: Optional[Path] = None,
-            detecter_speakers: bool = False
+        self,
+        fichiers_entree: List[Path],
+        dossier_sortie: Path,
+        duree_cible: Optional[int] = None,
+        ton: Optional[str] = None,
+        transcription_existante: Optional[Path] = None,
+        detecter_speakers: bool = False
     ) -> Path:
         """
         Workflow automatique : concat → transcription → IA → montage
@@ -52,6 +52,7 @@ class PodcastEditor:
             duree_cible: Durée cible en minutes (optionnel)
             ton: Ton souhaité (optionnel)
             transcription_existante: Chemin vers transcription existante (Feature 3)
+            detecter_speakers: Active la diarisation Pyannote (optionnel)
 
         Returns:
             Chemin du fichier final
@@ -91,10 +92,12 @@ class PodcastEditor:
             # Récupérer le token HF si diarisation demandée
             token_hf = None
             if detecter_speakers:
+                import os
                 token_hf = os.getenv('HUGGINGFACE_TOKEN')
                 if not token_hf:
                     print("⚠️  HUGGINGFACE_TOKEN manquant dans .env")
                     print("   La diarisation sera ignorée")
+                    print("   Obtenez un token sur : https://huggingface.co/settings/tokens")
 
             chemin_transcription = dossier_sortie / "transcription.txt"
             transcription = self.transcriber.transcrire(
@@ -103,6 +106,14 @@ class PodcastEditor:
                 detecter_speakers=detecter_speakers,
                 token_hf=token_hf
             )
+
+        # Étape 3 : Analyse IA
+        print("\n📍 ÉTAPE 3/4 : Analyse IA et génération de suggestions")
+        suggestions = self.ai_analyzer.analyser_transcription(
+            transcription,
+            duree_cible=duree_cible,
+            ton=ton
+        )
 
         # Sauvegarder les suggestions
         fichier_suggestions = dossier_sortie / "suggestions.json"

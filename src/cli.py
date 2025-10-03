@@ -96,16 +96,16 @@ def cli():
     help='Fichier de transcription existant (skip la transcription Whisper)'
 )
 @click.option(
+    '--detect-speakers',
+    is_flag=True,
+    help='Activer la détection des speakers (nécessite token HuggingFace et pyannote.audio)'
+)
+@click.option(
     '--config', '-c',
     type=click.Path(exists=True),
     help='Fichier de configuration personnalisé'
 )
-@click.option(
-    '--detect-speakers',
-    is_flag=True,
-    help='Activer la détection des speakers (nécessite token HuggingFace)'
-)
-def auto(entrees, sortie, duree, ton, transcription, config, detect_speakers):
+def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
     """
     Workflow automatique : transcription + analyse IA
 
