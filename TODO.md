@@ -7,4 +7,4 @@
 - [x] Workflow semi-automatique qui permet de skip la transcription en fournissant un fichier de transcription
 - [ ] GUI
 - [ ] Proposer fichier concaténé pour éviter l'étape de concaténation
-- [ ] Pouvoir ajouter une musique de fond
+- [ ] Pouvoir ajouter une musique de fond sur des segments

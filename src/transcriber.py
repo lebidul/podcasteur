@@ -156,14 +156,10 @@ class Transcriber:
 
             return transcription
 
-        except ImportError:
-            print("⚠️  pyannote.audio non installé, diarisation ignorée")
-            print("   Installez avec : pip install pyannote.audio")
-            return transcription
         except Exception as e:
             print(f"⚠️  Erreur lors de la diarisation : {e}")
-            print("   La transcription continue sans identification des speakers")
-            return transcription
+            import traceback
+            traceback.print_exc()
 
     def _sauvegarder_transcription(self, transcription: dict, chemin_sortie: Path):
         """Sauvegarde la transcription dans des fichiers"""
