@@ -167,13 +167,20 @@ class AudioProcessor:
         format_export = self.audio_config['format_export']
         debit = self.audio_config['debit']
 
-        # Feature 1: Nom de fichier horodaté
+        # Feature 1: Nom de fichier horodaté avec dossier dédié
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         nom_base = chemin_sortie.stem
-        nouveau_nom = f"{nom_base}_{timestamp}{chemin_sortie.suffix}"
-        chemin_sortie_horodate = chemin_sortie.parent / nouveau_nom
+        nom_avec_timestamp = f"{nom_base}_{timestamp}"
+
+        # Créer un dossier pour ce podcast
+        dossier_podcast = chemin_sortie.parent / nom_avec_timestamp
+        dossier_podcast.mkdir(parents=True, exist_ok=True)
+
+        # Fichier de sortie dans ce dossier
+        chemin_sortie_horodate = dossier_podcast / f"{nom_avec_timestamp}{chemin_sortie.suffix}"
 
         print(f"💾 Export en {format_export.upper()}...")
+        print(f"📁 Dossier de sortie : {dossier_podcast.name}/")
 
         params_export = {'format': format_export}
         if format_export == 'mp3':
@@ -196,6 +203,13 @@ class AudioProcessor:
                 fichier_meta,
                 chemin_sortie_horodate.name,
                 duree_finale,
+                metadonnees_segments
+            )
+
+            # Générer aussi les labels Audacity
+            fichier_labels = chemin_sortie_horodate.with_suffix('.txt')
+            self._generer_labels_audacity(
+                fichier_labels,
                 metadonnees_segments
             )
 
@@ -230,6 +244,31 @@ class AudioProcessor:
             json.dump(metadonnees, f, indent=2, ensure_ascii=False)
 
         print(f"📊 Métadonnées sauvegardées : {chemin_fichier.name}")
+
+    def _generer_labels_audacity(
+        self,
+        chemin_fichier: Path,
+        segments: List[dict]
+    ):
+        """
+        Génère un fichier de labels Audacity (.txt)
+
+        Format : start_time\tend_time\tlabel_text
+
+        Args:
+            chemin_fichier: Chemin du fichier de labels
+            segments: Liste des segments avec positions output
+        """
+        with open(chemin_fichier, 'w', encoding='utf-8') as f:
+            for seg in segments:
+                debut = seg['debut_output']
+                fin = seg['fin_output']
+                description = seg.get('description', f"Segment {seg['index']}")
+
+                # Format Audacity : 6 décimales, séparé par des tabs
+                f.write(f"{debut:.6f}\t{fin:.6f}\t{description}\n")
+
+        print(f"🎵 Labels Audacity sauvegardés : {chemin_fichier.name}")
 
     @staticmethod
     def obtenir_infos_audio(chemin_fichier: Path) -> dict:

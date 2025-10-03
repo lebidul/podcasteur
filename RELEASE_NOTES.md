@@ -1,5 +1,57 @@
 # Notes de version - Podcasteur
 
+## v1.3.0 - 2024-10-03
+
+### 🎵 Intégration Audacity et organisation améliorée
+
+Mise à jour axée sur l'intégration avec Audacity et une meilleure organisation des fichiers de sortie.
+
+### ✨ Nouvelles fonctionnalités
+
+- **Export de labels Audacity** : Génération automatique d'un fichier .txt de labels compatible Audacity
+  - Format natif Audacity (start_time, end_time, label)
+  - Importable directement via `Fichier > Importer > Labels`
+  - Permet de visualiser tous les segments avec leurs descriptions
+- **Organisation par dossier** : Chaque podcast est maintenant créé dans son propre sous-dossier horodaté
+  - Structure claire : un dossier = un podcast complet
+  - Tous les fichiers groupés (MP3, JSON, TXT)
+  - Facilite l'archivage et le partage
+
+### 🔧 Améliorations
+
+- Affichage du nom du fichier concaténé dans la console (étape 1)
+- Messages console plus clairs avec indication du dossier de sortie
+- Les deux workflows (auto et manuel) génèrent maintenant les labels Audacity
+
+### 📁 Structure de sortie
+
+```
+sortie/
+└── podcast_titre_20241003_143052/
+    ├── podcast_titre_20241003_143052.mp3   # Audio final
+    ├── podcast_titre_20241003_143052.json  # Métadonnées
+    └── podcast_titre_20241003_143052.txt   # Labels Audacity
+```
+
+### 🎯 Utilisation avec Audacity
+
+1. Ouvrir Audacity
+2. `Fichier > Ouvrir` → Sélectionner le MP3
+3. `Fichier > Importer > Labels...` → Sélectionner le fichier .txt
+4. Tous les segments apparaissent délimités visuellement
+
+### 📝 Format des labels
+
+```
+0.000000	102.000000	Segment 1 - Introduction
+103.000000	215.000000	Segment 2 - Interview
+216.000000	291.000000	Segment 3 - Conclusion
+```
+
+Simple, stable, et parfaitement compatible avec toutes les versions d'Audacity.
+
+---
+
 ## v1.2.0 - 2024-10-03
 
 ### 🎉 Sélection avancée et workflow interactif
@@ -88,9 +140,33 @@ Première mise à jour après la version initiale avec des fonctionnalités trè
 
 - Meilleurs messages dans la console avec affichage du nom du fichier créé
 - Support de 8 formats audio en entrée (WAV, MP3, OGG, FLAC, M4A, AAC, WMA, OPUS)
-- Workflow manuel g# Notes de version - Podcasteur
+- Workflow manuel génère maintenant aussi les métadonnées JSON
+- Préservation des descriptions du découpage d'entrée dans les métadonnées de sortie
+- Gestion des imports relatifs pour faciliter le debug dans PyCharm
 
-## v1.1.0 - 2024-10-03
+### 📝 Changements techniques
+
+- `AudioProcessor.creer_montage()` retourne maintenant un tuple `(AudioSegment, Path)` au lieu de juste `AudioSegment`
+- Nouvelle méthode `_collecter_fichiers_audio()` dans le CLI pour gérer fichiers et dossiers
+- Nouvelle méthode `_charger_transcription()` dans PodcastEditor pour le workflow semi-auto
+- Format de transcription supporté : `[MM:SS - MM:SS] Texte` ou texte brut
+
+### 🎯 Cas d'usage
+
+**Gain de temps avec transcription existante :**
+```bash
+podcasteur auto audio/ --transcription ma_transcription.txt --duree 5
+```
+
+**Navigation facilitée dans le podcast :**
+Le fichier JSON permet de savoir exactement où se trouve chaque segment pour l'édition post-production.
+
+**Réédition simplifiée :**
+Utilisez le JSON généré comme base pour un nouveau découpage manuel.
+
+---
+
+## v1.0.0 - 2024-10-02
 
 ### 🎉 Améliorations majeures du workflow
 
