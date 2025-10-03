@@ -400,8 +400,18 @@ podcasteur auto *.wav --config ma_config.yaml
 - `--config, -c` : Fichier de configuration personnalisé
 
 **Sortie générée :**
-- `podcast_titre_20241003_143052.mp3` - Le podcast final
-- `podcast_titre_20241003_143052.json` - Les métadonnées complètes
+```
+sortie/
+└── podcast_titre_20241003_143052/
+    ├── podcast_titre_20241003_143052.mp3   # Le podcast final
+    ├── podcast_titre_20241003_143052.json  # Métadonnées complètes
+    └── podcast_titre_20241003_143052.txt   # Labels Audacity
+```
+
+**Édition dans Audacity :**
+1. Ouvrir le MP3 dans Audacity
+2. `Fichier > Importer > Labels...` → Sélectionner le .txt
+3. Tous les segments apparaissent délimités
 
 ### Mode Manuel (découpage prédéfini)
 
@@ -515,8 +525,36 @@ podcasteur auto audio_bidul/ --duree 5 --ton "détendu et convivial" --sortie bi
 # 2. Transcrire l'audio
 # 3. Analyser avec Claude
 # 4. Proposer 3 découpages
-# 5. Vous laisser choisir
-# 6. Créer le montage final avec métadonnées
+# 5. Vous pouvez :
+#    - Choisir un ou plusieurs (1,3 → crée 2 fichiers)
+#    - Créer votre propre découpage (p)
+#    - Affiner avec feedback (r)
+# 6. Créer le(s) montage(s) final(aux) avec métadonnées
+```
+
+### Cas d'usage 2 : Test rapide de plusieurs versions
+
+```bash
+podcasteur auto audio/ --duree 5
+
+# Aux suggestions, tapez : 1-3
+# → Crée 3 versions différentes en une passe
+# → Écoutez et choisissez la meilleure
+```
+
+### Cas d'usage 3 : Affinage progressif
+
+```bash
+podcasteur auto audio/ --duree 5
+
+# 1ère itération : suggestions de base
+# Choix : r
+# Feedback : "Plus court, 3 minutes max, garde les moments drôles"
+# → Nouvelles suggestions
+
+# 2ème itération : suggestions affinées
+# Choix : 2
+# → Montage final
 ```
 
 ### Cas d'usage 2 : Réutiliser une transcription
