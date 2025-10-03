@@ -100,7 +100,12 @@ def cli():
     type=click.Path(exists=True),
     help='Fichier de configuration personnalisé'
 )
-def auto(entrees, sortie, duree, ton, transcription, config):
+@click.option(
+    '--detect-speakers',
+    is_flag=True,
+    help='Activer la détection des speakers (nécessite token HuggingFace)'
+)
+def auto(entrees, sortie, duree, ton, transcription, config, detect_speakers):
     """
     Workflow automatique : transcription + analyse IA
 
@@ -166,7 +171,8 @@ def auto(entrees, sortie, duree, ton, transcription, config):
             dossier_sortie,
             duree_cible=duree,
             ton=ton,
-            transcription_existante=transcription_path
+            transcription_existante=transcription_path,
+            detecter_speakers=detect_speakers
         )
 
         click.echo(f"\n✅ Succès ! Podcast créé : {fichier_final}")
