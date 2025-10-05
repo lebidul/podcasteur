@@ -1,3 +1,4 @@
+# podcasteur
 - [x] Avoir banque de sons prédéfinis (exemple générique, virgule, etc..)
 - [x] Choix suggestions: choix multiple possible et ajouter: soumettre 1 découpage perso, permettre la possibilité de relancer un prompt à pour qu'iel affine ses suggestions claude api
 - [x] Si possible output audacity project (avec le track splitté selon le découpage de sortie) pour pouvoir éditer la sortie dans audacity directement
@@ -10,3 +11,15 @@
 - [ ] Pouvoir ajouter une musique de fond sur des segments
 - [ ] Timestamps au dixième de seconde
 - [ ] Gérer valeurs de fondu nues dans la config
+
+# GUI
+- [ ] ton: picklist + 'Autre..'
+- [ ] progression bloquée à 0
+- [ ] import transcription ou du mix
+- [ ] étendre + intégrer onglet config
+- [ ] thème clair
+- [ ] affichage des suggestions
+- [ ] rendre découpage séctionné (manuel ou auto) dynamique et pouvoir y inclure (ou enlever) des morceaux  
+- [ ] découpage personnalisé
+- [ ] ajouter nom du fichier à l'édition des séquences
+- [ ] ajouter la possibilité de soumettre le découpage en json
