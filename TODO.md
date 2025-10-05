@@ -22,6 +22,7 @@
 - [x] affichage des suggestions
 - [x] ajouter la possibilité de soumettre le découpage en json
 - [ ] ton: picklist + 'Autre..'
+- [ ] fichier icone
 - [ ] .exe + mac + linux
 - [ ] étendre + intégrer onglet config
 - [ ] thème clair
