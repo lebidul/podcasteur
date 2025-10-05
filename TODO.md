@@ -20,10 +20,10 @@
 - [x] ajouter nom du fichier à l'édition des séquences
 - [x] dossier de sortie dans GUI
 - [x] affichage des suggestions
+- [x] ajouter la possibilité de soumettre le découpage en json
 - [ ] ton: picklist + 'Autre..'
 - [ ] .exe + mac + linux
 - [ ] étendre + intégrer onglet config
 - [ ] thème clair
-- [ ] ajouter la possibilité de soumettre le découpage en json
 - [ ] workflow manuel
 - [ ] transcription dans .exe

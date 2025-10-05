@@ -250,12 +250,21 @@ jobs:
       - name: Create distribution package
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          # Détecter la version correctement
+          if [[ "${{ github.event_name }}" == "push" ]] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="manual-$(date +%Y%m%d-%H%M%S)"
+          fi
+          
+          echo "Version détectée: $version"
           dist_name="Podcasteur-GUI-Windows-${version}"
           
           mkdir -p "${dist_name}"
           cp dist/Podcasteur.exe "${dist_name}/"
           cp .env.example "${dist_name}/.env.example"
+          cp README_WINDOWS.txt "${dist_name}/README.txt"
+          cp RELEASE_NOTES.md "${dist_name}/NOTES_VERSION.md"
           
           # README d'installation
           cat > "${dist_name}/README.txt" << 'EOF'
