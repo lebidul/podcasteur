@@ -1,6 +1,6 @@
 # Notes de version - Podcasteur
 
-# v1.5.0 - 2025-01-XX
+# v1.5.0 - 2025-01-06
 
 ## 🎉 Interface Graphique - Première Release GUI
 
@@ -10,16 +10,17 @@ Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podc
 
 #### Interface Graphique (GUI)
 - **Application PyQt6** moderne et intuitive
-- **Sélection de fichiers** par boutons ou drag & drop
+- **Sélection de fichiers** par boutons ou sélection de dossier
 - **Configuration visuelle** : durée cible, ton, détection speakers
 - **Support fichiers existants** : utilisation de mix/transcription pré-générés
+- **Sélection du dossier de sortie** : choix libre du dossier où seront créés les podcasts
 - **Barre de progression** en temps réel avec logs détaillés
 - **Éditeur de segments interactif** :
   - Ajout/suppression/modification de segments
   - Réorganisation par glisser-déposer (↑↓)
   - Édition des timestamps avec sélecteur de temps
   - Édition du fichier source avec parcours de fichiers
-  - Édition directe dans le tableau
+  - Édition directe dans le tableau (double-clic)
   - Validation des chevauchements
   - Réinitialisation aux suggestions originales
 - **Dialogue de suggestions** avec :
@@ -27,21 +28,24 @@ Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podc
   - Sélection d'une suggestion
   - Affinage avec feedback texte libre
   - Création de découpage personnalisé
+  - **Import JSON** : réutilisation de découpages existants
 
 #### Workflow GUI Automatique
 1. **Sélection** des fichiers audio (ou fichier mix existant)
-2. **Concaténation** automatique
-3. **Transcription** WhisperX (ou transcription existante)
-4. **Analyse IA** avec Claude pour générer 3 suggestions
-5. **Sélection** d'une suggestion par l'utilisateur
-6. **Édition** des segments avant montage
-7. **Montage final** avec génération des métadonnées
+2. **Configuration** du dossier de sortie
+3. **Concaténation** automatique (optionnel si mix fourni)
+4. **Transcription** WhisperX (optionnel si transcription fournie)
+5. **Analyse IA** avec Claude pour générer suggestions
+6. **Sélection** d'une suggestion ou import JSON
+7. **Édition** des segments avant montage
+8. **Montage final** avec génération des métadonnées
 
 #### Fonctionnalités avancées GUI
 - **Skip concat** : Utiliser un fichier mix existant
 - **Skip transcription** : Utiliser une transcription existante
 - **Workflow ultra-rapide** : Mix + transcription → IA directe
 - **Multi-fichiers sources** : Chaque segment peut provenir d'un fichier différent
+- **Import découpage JSON** : Réutiliser des métadonnées ou découpages précédents
 - **Configuration intro/outro** dans l'onglet Configuration
 - **Métadonnées enrichies** : JSON + labels Audacity générés automatiquement
 
@@ -51,7 +55,7 @@ Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podc
 - Application standalone sans installation Python
 - Téléchargez `Podcasteur-GUI-Windows-v1.5.0.zip`
 - Extrayez et lancez `Podcasteur.exe`
-- Taille : ~250-300 MB (inclut WhisperX et PyTorch)
+- Taille : ~250-300 MB (inclut dépendances PyTorch)
 
 **Autres plateformes (Source)**
 ```bash
@@ -93,18 +97,26 @@ pip install podcasteur-1.5.0-py3-none-any.whl
 
 **Workflow standard**
 1. Ajouter fichiers audio ou sélectionner dossier
-2. Configurer durée cible et ton
-3. Cliquer "Lancer le workflow automatique"
-4. Attendre transcription et analyse IA
-5. Sélectionner une suggestion
-6. Éditer les segments si nécessaire
-7. Cliquer "Créer le podcast"
+2. Choisir le dossier de sortie (défaut : `output`)
+3. Configurer durée cible et ton
+4. Cliquer "Lancer le workflow automatique"
+5. Attendre transcription et analyse IA
+6. Sélectionner une suggestion ou importer un JSON
+7. Éditer les segments si nécessaire
+8. Cliquer "Créer le podcast"
 
 **Workflow rapide (ré-édition)**
 1. Cocher "Utiliser fichier mix existant"
 2. Sélectionner `output/mix_complet.wav`
-3. Optionnel : cocher "Utiliser transcription existante"
-4. Lancer le workflow (skip concat/transcription)
+3. Cocher "Utiliser transcription existante"
+4. Sélectionner `output/transcription_timestamps.txt`
+5. Lancer le workflow (skip concat/transcription)
+
+**Import découpage existant**
+1. Dans le dialogue de suggestions, cliquer "📁 Importer JSON"
+2. Sélectionner un fichier de métadonnées (*.json) généré précédemment
+3. Les segments sont automatiquement chargés dans l'éditeur
+4. Modifier si nécessaire et créer le podcast
 
 ### 🖥️ Interface CLI (inchangée depuis v1.4.0)
 
@@ -139,28 +151,28 @@ python-dotenv>=1.0.0
 
 **Nouveaux modules**
 - `src/gui/main.py` : Point d'entrée GUI
-- `src/gui/main_window.py` : Fenêtre principale
+- `src/gui/main_window.py` : Fenêtre principale avec workflow complet
 - `src/gui/workers/` : Workers Qt pour threading
   - `concat_worker.py`
   - `transcription_worker.py`
   - `ai_worker.py`
   - `montage_worker.py`
 - `src/gui/dialogs/` : Dialogues GUI
-  - `suggestions_dialog.py`
-  - `segment_editor_dialog.py`
+  - `suggestions_dialog.py` : Sélection/affinage/import
+  - `segment_editor_dialog.py` : Édition interactive
 
 **Amélioration backend**
-- `AudioProcessor.creer_montage()` : Support multi-fichiers sources
-- Cache audio pour éviter rechargements multiples
+- `AudioProcessor.creer_montage()` : Support multi-fichiers sources avec cache
 - Métadonnées enrichies avec fichiers sources multiples
+- Correction calcul de durée dans les métadonnées
 
 ### 📝 Fichiers générés par la GUI
 
 ```
-output/
+[dossier_sortie]/
 └── podcast_titre_20250106_143052/
     ├── podcast_titre_20250106_143052.mp3   # Audio final
-    ├── podcast_titre_20250106_143052.json  # Métadonnées
+    ├── podcast_titre_20250106_143052.json  # Métadonnées (réutilisable)
     └── podcast_titre_20250106_143052.txt   # Labels Audacity
 ```
 
@@ -170,47 +182,69 @@ output/
 - Fix : Widgets personnalisés non récupérés dans `get_segments()`
 - Fix : Checkboxes mix/transcription non affichées
 - Fix : Fichiers sources personnalisés non utilisés au montage
+- Fix : Calcul de durée incorrect dans les métadonnées
+- Fix : Fichier mix fourni par utilisateur non propagé aux segments
 - Fix : Imports PyQt6 manquants
 - Fix : Trigger d'édition tableau (DoubleClicked vs DoubleClick)
 
 ### ⚠️ Limitations connues
 
+- **Transcription indisponible dans l'exe Windows** : La transcription WhisperX nécessite Python. Utilisez :
+  - L'option "Utiliser transcription existante" avec un fichier pré-généré
+  - OU le CLI Python pour générer la transcription : `podcasteur auto fichiers/ --duree 5`
 - **Windows uniquement** : Exécutable disponible seulement pour Windows
 - **Taille importante** : L'exe fait ~250-300 MB (inclut PyTorch)
-- **GPU recommandé** : Pour transcription rapide avec WhisperX
+- **GPU recommandé** : Pour transcription rapide avec WhisperX (mode Python)
 - **Workflow manuel GUI** : Pas encore implémenté (utiliser CLI)
 
 ### 🎯 Cas d'usage GUI
 
-**Podcast complet avec speakers**
+**Podcast complet avec speakers (mode Python)**
+```
 1. Ajouter fichiers audio
 2. Cocher "Détecter les speakers"
 3. Lancer workflow
 4. Sélectionner suggestion
 5. Éditer si nécessaire
 6. Créer
+```
 
-**Ré-édition rapide**
+**Ré-édition rapide (mode exe)**
+```
 1. Cocher "Utiliser fichier mix existant"
-2. Sélectionner `output/mix_complet.wav`
+2. Sélectionner output/mix_complet.wav
 3. Cocher "Utiliser transcription existante"
-4. Sélectionner `output/transcription_timestamps.txt`
+4. Sélectionner output/transcription_timestamps.txt
 5. Lancer (skip concat + transcription)
+```
+
+**Réutilisation découpage (nouveau)**
+```
+1. Workflow normal jusqu'aux suggestions
+2. Cliquer "📁 Importer JSON"
+3. Sélectionner un fichier métadonnées précédent
+4. Segments chargés automatiquement
+5. Modifier et créer
+```
 
 **Multi-sources**
+```
 1. Workflow standard
-2. Dans l'éditeur de segments : modifier fichier source par segment
-3. Parcourir différents fichiers
-4. Créer le podcast
+2. Dans l'éditeur de segments :
+   - Modifier fichier source par segment
+   - Parcourir différents fichiers
+3. Créer le podcast
+```
 
 ### 🙏 Remerciements
 
 Interface graphique développée avec PyQt6.
-Merci à tous les testeurs de la version beta.
+Merci aux testeurs de la version beta.
 
 ### 📚 Documentation
 
 - README.md mis à jour avec section GUI
+- README_WINDOWS.txt : Instructions exécutable
 - QUICKSTART_GUI.md (nouveau)
 - Guide d'édition de segments
 - Instructions d'installation Windows
