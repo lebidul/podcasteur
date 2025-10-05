@@ -88,41 +88,49 @@ class AudioProcessor:
             raise ValueError(f"Méthode de tri inconnue : {methode}")
 
     def creer_montage(
-        self,
-        audio_source: Union[AudioSegment, Path],
-        segments: List[dict],
-        chemin_sortie: Path,
-        generer_metadonnees: bool = True
+            self,
+            audio_source: Union[AudioSegment, Path],  # Peut être ignoré si segments ont 'fichier'
+            segments: List[dict],
+            chemin_sortie: Path,
+            generer_metadonnees: bool = True
     ) -> tuple[AudioSegment, Path]:
         """
         Crée la version montée avec les segments sélectionnés
 
         Args:
-            audio_source: Audio source (AudioSegment ou chemin)
-            segments: Liste de dictionnaires de segments avec 'debut' et 'fin' en secondes
-            chemin_sortie: Chemin du fichier de sortie
-            generer_metadonnees: Générer les métadonnées et labels
-
-        Returns:
-            Tuple (AudioSegment final monté, Path du fichier)
+            audio_source: Audio source par défaut (peut être None si segments ont 'fichier')
+            segments: Liste de segments avec 'debut', 'fin', 'fichier', 'description'
+            ...
         """
-        # Charger l'audio si c'est un chemin
-        if isinstance(audio_source, Path):
-            audio = AudioSegment.from_file(audio_source)
-        else:
-            audio = audio_source
+        print(f"✂️ Création du montage avec {len(segments)} segments...")
 
-        print(f"✂️  Création du montage avec {len(segments)} segments...")
+        # Cache pour les fichiers audio
+        cache_audio = {}
 
-        # Extraire les segments avec métadonnées
         extraits = []
         metadonnees_segments = []
-        position_output = 0.0  # Position courante dans le fichier de sortie
+        position_output = 0.0
 
         for i, seg in enumerate(segments, 1):
-            debut_ms = int(seg['debut'] * 1000)
-            fin_ms = int(seg['fin'] * 1000)
+            # Déterminer le fichier source
+            fichier_source = seg.get('fichier', 'mix_complet.wav')
 
+            # Charger le fichier audio (avec cache)
+            if fichier_source not in cache_audio:
+                chemin_fichier = Path(fichier_source)
+                if not chemin_fichier.exists():
+                    # Si chemin absolu n'existe pas, essayer relatif à output/
+                    chemin_fichier = Path('output') / fichier_source
+
+                print(f"   📂 Chargement de {chemin_fichier.name}...")
+                cache_audio[fichier_source] = AudioSegment.from_file(chemin_fichier)
+
+            audio = cache_audio[fichier_source]
+
+            # Extraire le segment
+            debut_ms = int(seg['debut'] *
+                           000)
+            fin_ms = int(seg['fin'] * 1000)
             segment = audio[debut_ms:fin_ms]
 
             # Appliquer les fondus
@@ -132,7 +140,7 @@ class AudioProcessor:
             extraits.append(segment)
             duree = (fin_ms - debut_ms) / 1000
 
-            # Collecter les métadonnées
+            # Métadonnées
             if generer_metadonnees:
                 metadonnees_segments.append({
                     'index': i,
@@ -142,14 +150,13 @@ class AudioProcessor:
                     'debut_output': position_output,
                     'fin_output': position_output + duree,
                     'duree': duree,
-                    'fichier_source': seg.get('fichier', 'mix_complet.wav')
+                    'fichier_source': fichier_source  # ← Conserver le vrai fichier
                 })
 
-                # Ajouter le silence pour la prochaine position
                 silence_sec = self.audio_config['silence_entre_segments'] / 1000
                 position_output += duree + silence_sec
 
-            print(f"  ✓ Segment {i}: {seg['debut']:.1f}s → {seg['fin']:.1f}s ({duree:.1f}s)")
+            print(f"  ✓ Segment {i}: {fichier_source} [{seg['debut']:.1f}s → {seg['fin']:.1f}s] ({duree:.1f}s)")
 
         # Combiner avec des silences
         duree_silence = self.audio_config['silence_entre_segments']

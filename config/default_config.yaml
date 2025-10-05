@@ -7,8 +7,8 @@
 audio:
   format_export: "mp3"        # Format de sortie : mp3, wav, ogg
   debit: "192k"               # Bitrate MP3 : 128k, 192k, 256k, 320k
-  duree_fondu: 500            # Durée des fondus en ms (entrée/sortie)
-  silence_entre_segments: 1000 # Silence entre segments en ms
+  duree_fondu: 100            # Durée des fondus en ms (entrée/sortie)
+  silence_entre_segments: 500 # Silence entre segments en ms
   normaliser: true            # Normaliser le volume
 
 # ========================================
