@@ -151,27 +151,35 @@ class SuggestionsDialog(QDialog):
         """Valide la sélection et ouvre l'éditeur de segments"""
         selected_id = self.button_group.checkedId()
         if selected_id >= 0:
-            suggestion = self.suggestions[selected_id].copy()  # Faire une copie
+            suggestion = self.suggestions[selected_id]
 
-            # IMPORTANT: S'assurer que tous les segments ont un champ 'fichier'
+            # IMPORTANT : Copier d'abord
+            suggestion_copy = {
+                'titre': suggestion['titre'],
+                'commentaire': suggestion['commentaire'],
+                'duree_estimee': suggestion['duree_estimee'],
+                'segments': []
+            }
+
+            # Puis ajouter les segments avec le fichier
             for seg in suggestion['segments']:
-                if 'fichier' not in seg:
-                    seg['fichier'] = 'mix_complet.wav'
+                segment_copy = seg.copy()
+                # Utiliser le fichier déjà présent OU ajouter mix_complet.wav par défaut
+                if 'fichier' not in segment_copy:
+                    segment_copy['fichier'] = 'mix_complet.wav'
+                suggestion_copy['segments'].append(segment_copy)
 
-            # Ouvrir l'éditeur de segments
+            # Ouvrir l'éditeur
             from src.gui.dialogs.segment_editor_dialog import SegmentEditorDialog
 
-            editor = SegmentEditorDialog(suggestion, self)
+            editor = SegmentEditorDialog(suggestion_copy, self)
 
             if editor.exec():
-                # Récupérer les segments modifiés
                 segments_modifies = editor.get_segments()
 
-                # Mettre à jour la suggestion avec les segments modifiés
-                suggestion_finale = suggestion.copy()
+                suggestion_finale = suggestion_copy.copy()
                 suggestion_finale['segments'] = segments_modifies
 
-                # Recalculer la durée
                 duree_totale = sum(s['fin'] - s['debut'] for s in segments_modifies)
                 suggestion_finale['duree_estimee'] = round(duree_totale / 60, 1)
 

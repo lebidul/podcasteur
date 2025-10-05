@@ -214,3 +214,81 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python -m twine upload dist/* || echo "⚠️  Publication PyPI échouée (token manquant ?)"
+
+  build-gui:
+    needs: build-release
+    runs-on: windows-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install FFmpeg
+        run: |
+          choco install ffmpeg -y
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller podcasteur_gui.spec
+
+      - name: Create distribution package
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          dist_name="Podcasteur-GUI-Windows-${version}"
+          
+          mkdir -p "${dist_name}"
+          cp dist/Podcasteur.exe "${dist_name}/"
+          cp .env.example "${dist_name}/.env.example"
+          
+          # README d'installation
+          cat > "${dist_name}/README.txt" << 'EOF'
+          ================================================
+          Podcasteur GUI v${version} - Windows
+          ================================================
+          
+          INSTALLATION RAPIDE:
+          
+          1. Créez un fichier .env (copier .env.example)
+          2. Ajoutez vos clés API:
+             ANTHROPIC_API_KEY=sk-ant-xxxxx
+             HUGGINGFACE_TOKEN=hf_xxxxx (optionnel)
+          
+          3. Double-cliquez sur Podcasteur.exe
+          
+          PRÉREQUIS:
+          - FFmpeg doit être installé et dans le PATH
+          - Windows 10/11
+          
+          SUPPORT:
+          https://github.com/lebidul/podcasteur
+          EOF
+          
+          # Créer l'archive ZIP
+          7z a "${dist_name}.zip" "${dist_name}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: podcasteur-gui-windows
+          path: Podcasteur-GUI-Windows-*.zip
+
+      - name: Create Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Podcasteur-GUI-Windows-*.zip
+          draft: false
+          prerelease: false

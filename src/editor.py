@@ -123,6 +123,12 @@ class PodcastEditor:
             ton=ton
         )
 
+        print(f"   🔧 Ajout du fichier source aux segments: {fichier_mix_final.name}")
+        for suggestion in suggestions:
+            for segment in suggestion['segments']:
+                # Toujours utiliser le fichier mix réel (fourni ou généré)
+                segment['fichier'] = str(fichier_mix_final)
+
         # Sauvegarder les suggestions
         fichier_suggestions = dossier_sortie / "suggestions.json"
         self.ai_analyzer.sauvegarder_suggestions(suggestions, fichier_suggestions)
@@ -526,10 +532,10 @@ Garde le même format JSON que précédemment."""
             return suggestions_precedentes
 
     def _monter_depuis_suggestion(
-        self,
-        fichier_source: Path,
-        suggestion: Dict,
-        dossier_sortie: Path
+            self,
+            fichier_source: Path,
+            suggestion: Dict,
+            dossier_sortie: Path
     ) -> Path:
         """
         Monte le podcast depuis une suggestion IA
@@ -543,21 +549,29 @@ Garde le même format JSON que précédemment."""
             Chemin du fichier final
         """
         # Convertir les segments de suggestion en format pour audio_processor
-        segments = [
-            {
+        segments = []
+        for seg in suggestion['segments']:
+            # Utiliser le fichier source réel (celui fourni par l'utilisateur)
+            fichier = seg.get('fichier', str(fichier_source))
+
+            # Si le segment n'a pas de fichier OU pointe vers mix_complet.wav
+            # alors utiliser le fichier_source actuel
+            if not fichier or fichier == 'mix_complet.wav' or 'mix_complet.wav' in fichier:
+                fichier = str(fichier_source)
+
+            segments.append({
                 'debut': seg['debut'],
                 'fin': seg['fin'],
+                'fichier': fichier,
                 'description': seg['description']
-            }
-            for seg in suggestion['segments']
-        ]
+            })
 
         # Créer nom de fichier basé sur le titre
         nom_fichier = self._nettoyer_nom_fichier(suggestion['titre'])
         format_export = self.config['audio']['format_export']
         fichier_sortie = dossier_sortie / f"{nom_fichier}.{format_export}"
 
-        # Monter (retourne maintenant un tuple)
+        # Monter
         _, fichier_final = self.audio_processor.creer_montage(
             fichier_source,
             segments,
