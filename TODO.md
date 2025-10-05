@@ -13,13 +13,15 @@
 - [ ] Gérer valeurs de fondu nues dans la config
 
 # GUI
+- [x] progression bloquée à 0
+- [x] import transcription ou du mix
+- [x] rendre découpage séctionné (manuel ou auto) dynamique et pouvoir y inclure (ou enlever) des morceaux  
+- [x] découpage personnalisé
+- [x] ajouter nom du fichier à l'édition des séquences
 - [ ] ton: picklist + 'Autre..'
-- [ ] progression bloquée à 0
-- [ ] import transcription ou du mix
+- [ ] .exe + mac + linux
 - [ ] étendre + intégrer onglet config
 - [ ] thème clair
 - [ ] affichage des suggestions
-- [ ] rendre découpage séctionné (manuel ou auto) dynamique et pouvoir y inclure (ou enlever) des morceaux  
-- [ ] découpage personnalisé
-- [ ] ajouter nom du fichier à l'édition des séquences
 - [ ] ajouter la possibilité de soumettre le découpage en json
+- [ ] workflow manuel

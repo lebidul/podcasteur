@@ -128,7 +128,8 @@ class AudioProcessor:
             audio = cache_audio[fichier_source]
 
             # Extraire le segment
-            debut_ms = int(seg['debut'] * 1000)
+            debut_ms = int(seg['debut'] *
+                           000)
             fin_ms = int(seg['fin'] * 1000)
             segment = audio[debut_ms:fin_ms]
 
