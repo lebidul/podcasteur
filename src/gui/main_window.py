@@ -150,6 +150,19 @@ class MainWindow(QMainWindow):
 
         options_layout.addLayout(trans_layout)
 
+        # Dossier de sortie
+        sortie_layout = QHBoxLayout()
+        sortie_layout.addWidget(QLabel("Dossier de sortie :"))
+        self.sortie_input = QLineEdit("output")
+        sortie_layout.addWidget(self.sortie_input, 1)
+        btn_browse_sortie = QPushButton("Parcourir")
+        btn_browse_sortie.clicked.connect(self._browse_sortie_folder)
+        sortie_layout.addWidget(btn_browse_sortie)
+        options_layout.addLayout(sortie_layout)
+
+        options_group.setLayout(options_layout)
+        layout.addWidget(options_group)
+
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
@@ -289,8 +302,8 @@ class MainWindow(QMainWindow):
         self._log("\n📍 ÉTAPE 1/4 : Concaténation")
 
         processor = AudioProcessor(self.config)
-        dossier_sortie = Path("output")
-        dossier_sortie.mkdir(exist_ok=True)
+        dossier_sortie = Path(self.sortie_input.text())
+        dossier_sortie.mkdir(parents=True, exist_ok=True)
         fichier_mix = dossier_sortie / "mix_complet.wav"
 
         self.concat_worker = ConcatWorker(
@@ -448,7 +461,7 @@ class MainWindow(QMainWindow):
         self._log(f"\n📍 ÉTAPE 4/4 : Montage - {suggestion['titre']}")
 
         processor = AudioProcessor(self.config)
-        dossier_sortie = Path("output")
+        dossier_sortie = Path(self.sortie_input.text())
 
         self.montage_worker = MontageWorker(
             processor,
@@ -550,6 +563,15 @@ class MainWindow(QMainWindow):
         )
         if file:
             self.transcription_file_input.setText(file)
+
+    def _browse_sortie_folder(self):
+        """Parcourir le dossier de sortie"""
+        folder = QFileDialog.getExistingDirectory(
+            self, "Sélectionner le dossier de sortie",
+            self.sortie_input.text()
+        )
+        if folder:
+            self.sortie_input.setText(folder)
 
     def _browse_file(self, line_edit):
         """Parcourir un fichier"""
