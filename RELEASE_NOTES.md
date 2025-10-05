@@ -1,5 +1,228 @@
 # Notes de version - Podcasteur
 
+## v1.4.0 - 2024-10-05
+
+### 🎉 Détection des speakers et habillage sonore
+
+Mise à jour majeure ajoutant la diarisation (détection des intervenants) et les éléments sonores (intro/outro).
+
+### ✨ Nouvelles fonctionnalités
+
+#### 1. Détection des speakers avec WhisperX + Pyannote
+- **Diarisation automatique** : Identifie qui parle quand dans vos enregistrements
+- **WhisperX** remplace Whisper classique pour une meilleure précision des timestamps
+- **Pyannote.audio** pour l'identification des intervenants
+- Option `--detect-speakers` dans le CLI
+- Transcription enrichie avec labels `[SPEAKER_00]`, `[SPEAKER_01]`, etc.
+- Support GPU pour performances optimales
+- Fallback intelligent en cas d'erreur
+
+**Utilisation :**
+```bash
+podcasteur auto audio/ --duree 5 --detect-speakers
+```
+
+**Configuration requise :**
+- Token HuggingFace dans `.env`
+- Acceptation des conditions sur HuggingFace :
+  - https://huggingface.co/pyannote/speaker-diarization-3.1
+  - https://huggingface.co/pyannote/segmentation-3.0
+
+#### 2. Éléments sonores (intro/outro)
+- **Ajout automatique d'intro et outro** au montage final
+- Fondus d'entrée et de sortie configurables
+- Configuration via YAML
+- Support de tous formats audio (MP3, WAV, OGG, etc.)
+- Métadonnées et labels Audacity incluent intro/outro
+- Timestamps ajustés automatiquement
+
+**Configuration :**
+```yaml
+elements_sonores:
+  activer: true
+  generique_debut:
+    fichier: "assets/intro.mp3"
+    duree_fondu_sortie: 1000  # ms
+  generique_fin:
+    fichier: "assets/outro.mp3"
+    duree_fondu_entree: 1000  # ms
+```
+
+**Structure des fichiers :**
+```
+podcasteur/
+├── assets/
+│   ├── intro.mp3
+│   └── outro.mp3
+```
+
+#### 3. Option --mix pour workflow accéléré
+- **Skip la concaténation** en fournissant directement un fichier déjà mixé
+- Gain de temps pour itérations multiples
+- Combinable avec `--transcription` pour workflow ultra-rapide
+
+**Utilisation :**
+```bash
+# Utiliser un fichier déjà concaténé
+podcasteur auto --mix sortie/mix_complet.wav --duree 5
+
+# Combo ultra-rapide : skip concat + skip transcription
+podcasteur auto --mix sortie/mix_complet.wav \
+                --transcription sortie/transcription.txt \
+                --duree 3
+```
+
+### 🔧 Améliorations
+
+#### WhisperX (remplacement de Whisper)
+- **70% plus rapide** que Whisper classique
+- **Timestamps précis au mot** grâce à l'alignement forcé
+- **Diarisation intégrée** sans librairie supplémentaire
+- **Optimisé pour le français** avec modèles d'alignement dédiés
+- **Meilleure gestion mémoire** avec libération automatique
+
+#### Métadonnées enrichies
+- Section `elements_sonores` avec durées intro/outro
+- Intro et outro inclus comme segments dans la liste
+- Vrais chemins de fichiers pour intro/outro
+- `nombre_segments_contenu` vs `nombre_segments` (total)
+- Timestamps ajustés tenant compte de l'intro
+
+**Exemple de métadonnées :**
+```json
+{
+  "nombre_segments": 13,
+  "nombre_segments_contenu": 11,
+  "elements_sonores": {
+    "intro_duree_secondes": 8.5,
+    "outro_duree_secondes": 12.3
+  },
+  "segments": [
+    {
+      "index": 0,
+      "description": "[INTRO]",
+      "fichier_source": "assets/intro.wav",
+      "debut_output": 0.0,
+      "fin_output": 8.5
+    },
+    {
+      "index": 1,
+      "description": "Segment 1",
+      "debut_output": 8.5,
+      "fin_output": 40.5
+    },
+    ...
+    {
+      "index": 12,
+      "description": "[OUTRO]",
+      "fichier_source": "assets/outro.wav"
+    }
+  ]
+}
+```
+
+#### Labels Audacity améliorés
+- Labels `[INTRO]` et `[OUTRO]` distincts
+- Timestamps précis avec l'offset de l'intro
+- Tous les segments visibles et bien positionnés
+
+#### Suppression des warnings
+- Filtrage automatique des warnings verbeux de torchaudio
+- Messages de progression clairs et structurés
+- Console plus lisible
+
+### 📦 Nouvelles dépendances
+
+```bash
+# WhisperX (remplace openai-whisper)
+pip install git+https://github.com/m-bain/whisperx.git
+
+# Pyannote pour diarisation (optionnel)
+pip install pyannote.audio
+```
+
+### 🔄 Migration depuis v1.3.0
+
+1. **Installer WhisperX** :
+```bash
+pip uninstall openai-whisper -y
+pip install git+https://github.com/m-bain/whisperx.git
+```
+
+2. **Pour la diarisation (optionnel)** :
+```bash
+pip install pyannote.audio
+# Ajouter dans .env :
+HUGGINGFACE_TOKEN=votre_token_hf
+```
+
+3. **Pour intro/outro (optionnel)** :
+```bash
+mkdir assets
+# Placer intro.mp3 et outro.mp3 dans assets/
+```
+
+4. **Mettre à jour la config** :
+```yaml
+# Dans config/default_config.yaml
+elements_sonores:
+  activer: true  # ou false si non utilisé
+```
+
+### 🎯 Cas d'usage
+
+**Podcast avec identification des speakers :**
+```bash
+podcasteur auto audio/ --duree 5 --detect-speakers
+# → Transcription avec [SPEAKER_00], [SPEAKER_01]
+# → Métadonnées incluent les speakers
+```
+
+**Podcast avec habillage sonore :**
+```bash
+# Activer elements_sonores dans la config
+podcasteur auto audio/ --duree 5
+# → [Intro 8s] + [Contenu 5min] + [Outro 12s] = 5min20s total
+```
+
+**Workflow ultra-rapide (ré-édition) :**
+```bash
+podcasteur auto --mix sortie/mix_complet.wav \
+                --transcription sortie/transcription.txt \
+                --duree 3
+# → Skip concat + transcription = analyse IA directe
+```
+
+**Podcast complet avec tout :**
+```bash
+podcasteur auto audio/ --duree 5 --detect-speakers
+# → WhisperX + Diarisation + IA + Montage + Intro/Outro
+```
+
+### ⚠️ Breaking Changes
+
+- **Whisper → WhisperX** : L'API de transcription a changé (compatible en interne)
+- **Métadonnées** : Nouvelle structure avec `elements_sonores` et `nombre_segments_contenu`
+
+### 🐛 Corrections de bugs
+
+- Fix : Gestion robuste des fondus avec valeurs None dans la config
+- Fix : Attribution manuelle des speakers en fallback si WhisperX échoue
+- Fix : Timestamps correctement ajustés avec intro/outro
+
+### 📚 Documentation ajoutée
+
+- `assets/README.md` : Guide des éléments sonores
+- `GUIDE_ELEMENTS_SONORES.md` : Utilisation détaillée intro/outro
+- `README_WHISPERX.md` : Migration et utilisation de WhisperX
+
+### 🙏 Remerciements
+
+- **WhisperX** (Max Bain) pour la transcription améliorée
+- **Pyannote** (Hervé Bredin) pour la diarisation
+
+---
+
 ## v1.3.0 - 2024-10-03
 
 ### 🎵 Intégration Audacity et organisation améliorée
@@ -40,7 +263,7 @@ sortie/
 3. `Fichier > Importer > Labels...` → Sélectionner le fichier .txt
 4. Tous les segments apparaissent délimités visuellement
 
-### 📝 Format des labels
+### 📊 Format des labels
 
 ```
 0.000000	102.000000	Segment 1 - Introduction

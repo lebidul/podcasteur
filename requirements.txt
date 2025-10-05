@@ -1,1 +1,19 @@
+# Audio processing
 pydub>=0.25.1
+ffmpeg-python>=0.2.0
+
+# Transcription avec WhisperX (inclut Whisper + alignement + diarisation)
+git+https://github.com/m-bain/whisperx.git
+
+# IA et API
+anthropic>=0.18.0
+
+# CLI
+click>=8.1.0
+
+# Configuration
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Utilitaires
+pathlib>=1.0.1

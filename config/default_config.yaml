@@ -1,83 +1,70 @@
-# Podcasteur - Configuration par défaut
+# Configuration par défaut de Podcasteur
+# Optimisée pour les podcasts en français
 
-# Paramètres audio
+# ========================================
+# PARAMÈTRES AUDIO
+# ========================================
 audio:
-  # Format d'export final
-  format_export: "mp3"  # Options: mp3, wav, ogg
+  format_export: "mp3"        # Format de sortie : mp3, wav, ogg
+  debit: "192k"               # Bitrate MP3 : 128k, 192k, 256k, 320k
+  duree_fondu: 500            # Durée des fondus en ms (entrée/sortie)
+  silence_entre_segments: 1000 # Silence entre segments en ms
+  normaliser: true            # Normaliser le volume
 
-  # Qualité audio (pour MP3)
-  debit: "192k"  # Options: 128k, 192k, 256k, 320k
-
-  # Durée des fondus (en millisecondes)
-  duree_fondu: 500
-
-  # Silence entre segments (en millisecondes)
-  silence_entre_segments: 500
-
-  # Normalisation audio
-  normaliser: true
-
-# Paramètres de transcription
+# ========================================
+# TRANSCRIPTION (WhisperX)
+# ========================================
 transcription:
-  # Modèle Whisper à utiliser
-  modele: "base"  # Options: tiny, base, small, medium, large
-  # tiny: rapide mais moins précis
-  # base: bon compromis (recommandé pour commencer)
-  # small: meilleure précision
-  # medium/large: très précis mais lent
+  modele: "base"              # Modèles WhisperX pour français :
+                              # - tiny   : ~40s/min, moins précis (léger)
+                              # - base   : ~1min/min, bon compromis (recommandé)
+                              # - small  : ~2min/min, très précis
+                              # - medium : ~4min/min, excellent (GPU recommandé)
+                              # - large-v2 : ~8min/min, meilleur (GPU nécessaire)
 
-  # Langue (détection automatique si null)
-  langue: "fr"
-
-  # Dossier de sauvegarde des transcriptions
+  langue: "fr"                # Toujours français
   dossier_sortie: "transcriptions"
 
-# Paramètres IA (Claude)
+# ========================================
+# ANALYSE IA (Claude)
+# ========================================
 analyse_ia:
-  # Modèle Claude à utiliser
-  modele: "claude-sonnet-4-5-20250929"
+  modele: "claude-sonnet-4-5-20250929"  # Modèle Claude à utiliser
+  duree_cible: 5              # Durée cible du podcast en minutes
+  ton: "informatif et dynamique"  # Ton souhaité pour les suggestions
+                              # Options suggérées:
+                              # - "informatif et dynamique"
+                              # - "détendu et conversationnel"
+                              # - "professionnel et concis"
+                              # - "créatif et narratif"
+  nombre_suggestions: 3       # Nombre de suggestions à générer
+  temperature: 0.7            # Créativité de Claude (0.0 = précis, 1.0 = créatif)
 
-  # Durée souhaitée du podcast final (en minutes)
-  duree_cible: 5
-
-  # Ton/style souhaité
-  ton: "informatif et dynamique"
-  # Options suggérées:
-  # - "informatif et dynamique"
-  # - "détendu et conversationnel"
-  # - "professionnel et concis"
-  # - "créatif et narratif"
-
-  # Nombre de suggestions à générer
-  nombre_suggestions: 3
-
-  # Température de génération (0.0 = déterministe, 1.0 = créatif)
-  temperature: 0.7
-
-# Paramètres CLI
-cli:
-  # Afficher le progrès détaillé
-  verbeux: true
-
-  # Sauvegarder les fichiers intermédiaires
-  garder_fichiers_intermediaires: true
-
-  # Dossier de sortie par défaut
-  dossier_sortie: "sortie"
-
-# Paramètres de tri des fichiers
+# ========================================
+# TRI DES FICHIERS
+# ========================================
 tri_fichiers:
-  # Méthode de tri: "nom" ou "date"
-  methode: "nom"  # Options: nom, date
+  methode: "nom"              # Méthode de tri : "nom" ou "date"
+  ordre: "asc"                # Ordre : "asc" (croissant) ou "desc" (décroissant)
 
-  # Ordre: "asc" ou "desc"
-  ordre: "asc"
-
-# Validation
+# ========================================
+# VALIDATION
+# ========================================
 validation:
-  # Vérifier que les timestamps sont dans la durée du fichier
-  verifier_timestamps: true
+  verifier_timestamps: true   # Vérifier que les timestamps sont valides
+  tolerance_timestamps: 0.5   # Tolérance en secondes pour les dépassements
 
-  # Tolérance pour les timestamps (en secondes)
-  # Si un timestamp dépasse de moins que cette valeur, il sera ajusté
-  tolerance_timestamps: 0.5
+
+elements_sonores:
+  activer: true
+  generique_debut:
+    fichier: "assets/intro.wav"
+    duree_fondu_sortie: 1  # ms
+  generique_fin:
+    fichier: "assets/outro.wav"
+    duree_fondu_entree: 1
+  virgule_sonore:
+    fichier: "assets/jingle.mp3"
+    position: "desactive"  # ou "entre_segments"
+    duree_fondu_entree: 500
+    duree_fondu_sortie: 500

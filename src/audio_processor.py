@@ -101,9 +101,10 @@ class AudioProcessor:
             audio_source: Audio source (AudioSegment ou chemin)
             segments: Liste de dictionnaires de segments avec 'debut' et 'fin' en secondes
             chemin_sortie: Chemin du fichier de sortie
+            generer_metadonnees: Générer les métadonnées et labels
 
         Returns:
-            AudioSegment final monté
+            Tuple (AudioSegment final monté, Path du fichier)
         """
         # Charger l'audio si c'est un chemin
         if isinstance(audio_source, Path):
@@ -163,6 +164,34 @@ class AudioProcessor:
             print("📊 Normalisation de l'audio...")
             final = normalize(final)
 
+        # Ajouter intro/outro si configuré et ajuster les métadonnées
+        duree_intro = 0
+        duree_outro = 0
+        fichier_intro = None
+        fichier_outro = None
+        
+        if self.config.get('elements_sonores', {}).get('activer'):
+            print("\n🎵 Ajout des éléments sonores...")
+            
+            # Récupérer les noms de fichiers avant l'ajout
+            config_elements = self.config['elements_sonores']
+            if config_elements.get('generique_debut', {}).get('fichier'):
+                fichier_intro = config_elements['generique_debut']['fichier']
+            if config_elements.get('generique_fin', {}).get('fichier'):
+                fichier_outro = config_elements['generique_fin']['fichier']
+            
+            final, duree_intro, duree_outro = self.ajouter_elements_sonores(
+                final,
+                config_elements
+            )
+            
+            # Ajuster les timestamps des métadonnées si intro présente
+            if duree_intro > 0 and generer_metadonnees:
+                print(f"   📊 Ajustement des timestamps (+{duree_intro:.1f}s d'intro)")
+                for seg in metadonnees_segments:
+                    seg['debut_output'] += duree_intro
+                    seg['fin_output'] += duree_intro
+
         # Exporter
         format_export = self.audio_config['format_export']
         debit = self.audio_config['debit']
@@ -179,7 +208,7 @@ class AudioProcessor:
         # Fichier de sortie dans ce dossier
         chemin_sortie_horodate = dossier_podcast / f"{nom_avec_timestamp}{chemin_sortie.suffix}"
 
-        print(f"💾 Export en {format_export.upper()}...")
+        print(f"\n💾 Export en {format_export.upper()}...")
         print(f"📁 Dossier de sortie : {dossier_podcast.name}/")
 
         params_export = {'format': format_export}
@@ -193,44 +222,161 @@ class AudioProcessor:
         taille_fichier = chemin_sortie_horodate.stat().st_size / (1024 * 1024)
 
         print(f"✅ Montage terminé : {duree_finale:.1f}s ({duree_finale/60:.1f}min)")
-        print(f"📁 Taille du fichier : {taille_fichier:.2f} Mo")
+        print(f"📏 Taille du fichier : {taille_fichier:.2f} Mo")
         print(f"📄 Fichier : {chemin_sortie_horodate.name}")
 
-        # Feature 2: Générer les métadonnées
+        # Feature 2: Générer les métadonnées avec info intro/outro
         if generer_metadonnees:
             fichier_meta = chemin_sortie_horodate.with_suffix('.json')
             self._generer_metadonnees(
                 fichier_meta,
                 chemin_sortie_horodate.name,
                 duree_finale,
-                metadonnees_segments
+                metadonnees_segments,
+                duree_intro,
+                duree_outro,
+                fichier_intro,
+                fichier_outro
             )
 
-            # Générer aussi les labels Audacity
+            # Générer aussi les labels Audacity avec intro/outro
             fichier_labels = chemin_sortie_horodate.with_suffix('.txt')
             self._generer_labels_audacity(
                 fichier_labels,
-                metadonnees_segments
+                metadonnees_segments,
+                duree_intro,
+                duree_outro
             )
 
         return final, chemin_sortie_horodate
+
+    def ajouter_elements_sonores(
+        self,
+        audio_principal: AudioSegment,
+        config_elements: dict
+    ) -> tuple[AudioSegment, float, float]:
+        """
+        Ajoute intro et/ou outro au podcast
+        
+        Args:
+            audio_principal: L'audio du podcast monté
+            config_elements: Configuration des éléments sonores
+            
+        Returns:
+            Tuple (AudioSegment avec intro/outro, durée intro, durée outro)
+        """
+        resultat = audio_principal
+        duree_intro = 0
+        duree_outro = 0
+        
+        # Ajouter l'intro
+        generique_debut = config_elements.get('generique_debut', {})
+        if generique_debut.get('fichier'):
+            intro_path = Path(generique_debut['fichier'])
+            
+            if intro_path.exists():
+                print(f"   🎵 Ajout de l'intro : {intro_path.name}")
+                intro = AudioSegment.from_file(intro_path)
+                
+                # Récupérer le fondu avec valeur par défaut
+                fondu_sortie = generique_debut.get('duree_fondu_sortie', 1000)
+                if fondu_sortie and fondu_sortie > 0:
+                    intro = intro.fade_out(fondu_sortie)
+                
+                resultat = intro + resultat
+                duree_intro = len(intro) / 1000
+                print(f"   ✅ Intro ajoutée ({duree_intro:.1f}s)")
+            else:
+                print(f"   ⚠️  Intro non trouvée : {intro_path}")
+        
+        # Ajouter l'outro
+        generique_fin = config_elements.get('generique_fin', {})
+        if generique_fin.get('fichier'):
+            outro_path = Path(generique_fin['fichier'])
+            
+            if outro_path.exists():
+                print(f"   🎵 Ajout de l'outro : {outro_path.name}")
+                outro = AudioSegment.from_file(outro_path)
+                
+                # Récupérer le fondu avec valeur par défaut
+                fondu_entree = generique_fin.get('duree_fondu_entree', 1000)
+                if fondu_entree and fondu_entree > 0:
+                    outro = outro.fade_in(fondu_entree)
+                
+                resultat = resultat + outro
+                duree_outro = len(outro) / 1000
+                print(f"   ✅ Outro ajoutée ({duree_outro:.1f}s)")
+            else:
+                print(f"   ⚠️  Outro non trouvée : {outro_path}")
+        
+        duree_totale_elements = duree_intro + duree_outro
+        if duree_totale_elements > 0:
+            print(f"   📊 Durée totale des éléments sonores : {duree_totale_elements:.1f}s")
+        
+        return resultat, duree_intro, duree_outro
 
     def _generer_metadonnees(
         self,
         chemin_fichier: Path,
         nom_podcast: str,
         duree_totale: float,
-        segments: List[dict]
+        segments: List[dict],
+        duree_intro: float = 0,
+        duree_outro: float = 0,
+        fichier_intro: str = None,
+        fichier_outro: str = None
     ):
         """Génère un fichier JSON avec les métadonnées du podcast"""
+
+        # Construire la liste complète des segments incluant intro/outro
+        tous_segments = []
+        
+        # Ajouter l'intro comme premier segment si présente
+        if duree_intro > 0:
+            tous_segments.append({
+                'index': 0,
+                'description': '[INTRO]',
+                'debut_source': None,
+                'fin_source': None,
+                'debut_output': 0.0,
+                'fin_output': duree_intro,
+                'duree': duree_intro,
+                'fichier_source': fichier_intro if fichier_intro else 'intro'
+            })
+        
+        # Ajouter les segments de contenu
+        tous_segments.extend(segments)
+        
+        # Ajouter l'outro comme dernier segment si présente
+        if duree_outro > 0:
+            if segments:
+                debut_outro = segments[-1]['fin_output']
+            else:
+                debut_outro = duree_intro
+            
+            tous_segments.append({
+                'index': len(segments) + 1,
+                'description': '[OUTRO]',
+                'debut_source': None,
+                'fin_source': None,
+                'debut_output': debut_outro,
+                'fin_output': debut_outro + duree_outro,
+                'duree': duree_outro,
+                'fichier_source': fichier_outro if fichier_outro else 'outro'
+            })
 
         metadonnees = {
             'podcast': nom_podcast,
             'date_creation': datetime.now().isoformat(),
             'duree_totale_secondes': round(duree_totale, 2),
             'duree_totale_minutes': round(duree_totale / 60, 2),
-            'nombre_segments': len(segments),
-            'segments': segments,
+            'nombre_segments': len(tous_segments),
+            'nombre_segments_contenu': len(segments),
+            'elements_sonores': {
+                'intro_duree_secondes': round(duree_intro, 2) if duree_intro > 0 else None,
+                'outro_duree_secondes': round(duree_outro, 2) if duree_outro > 0 else None
+            },
+            'segments': tous_segments,
             'configuration': {
                 'duree_fondu_ms': self.audio_config['duree_fondu'],
                 'silence_entre_segments_ms': self.audio_config['silence_entre_segments'],
@@ -248,7 +394,9 @@ class AudioProcessor:
     def _generer_labels_audacity(
         self,
         chemin_fichier: Path,
-        segments: List[dict]
+        segments: List[dict],
+        duree_intro: float = 0,
+        duree_outro: float = 0
     ):
         """
         Génère un fichier de labels Audacity (.txt)
@@ -258,8 +406,15 @@ class AudioProcessor:
         Args:
             chemin_fichier: Chemin du fichier de labels
             segments: Liste des segments avec positions output
+            duree_intro: Durée de l'intro (pour label séparé)
+            duree_outro: Durée de l'outro (pour label séparé)
         """
         with open(chemin_fichier, 'w', encoding='utf-8') as f:
+            # Label pour l'intro si présente
+            if duree_intro > 0:
+                f.write(f"0.000000\t{duree_intro:.6f}\t[INTRO]\n")
+            
+            # Labels pour les segments de contenu
             for seg in segments:
                 debut = seg['debut_output']
                 fin = seg['fin_output']
@@ -267,6 +422,14 @@ class AudioProcessor:
 
                 # Format Audacity : 6 décimales, séparé par des tabs
                 f.write(f"{debut:.6f}\t{fin:.6f}\t{description}\n")
+            
+            # Label pour l'outro si présente
+            if duree_outro > 0:
+                # Calculer le début de l'outro (fin du dernier segment)
+                if segments:
+                    debut_outro = segments[-1]['fin_output']
+                    fin_outro = debut_outro + duree_outro
+                    f.write(f"{debut_outro:.6f}\t{fin_outro:.6f}\t[OUTRO]\n")
 
         print(f"🎵 Labels Audacity sauvegardés : {chemin_fichier.name}")
 

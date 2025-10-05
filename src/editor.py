@@ -34,23 +34,28 @@ class PodcastEditor:
         else:
             self.ai_analyzer = None
 
+
     def workflow_automatique(
         self,
         fichiers_entree: List[Path],
         dossier_sortie: Path,
         duree_cible: Optional[int] = None,
         ton: Optional[str] = None,
-        transcription_existante: Optional[Path] = None
+        transcription_existante: Optional[Path] = None,
+        detecter_speakers: bool = False,
+        fichier_mix: Optional[Path] = None
     ) -> Path:
         """
         Workflow automatique : concat → transcription → IA → montage
 
         Args:
-            fichiers_entree: Liste des fichiers audio à traiter
+            fichiers_entree: Liste des fichiers audio à traiter (ignoré si fichier_mix fourni)
             dossier_sortie: Dossier de sortie
             duree_cible: Durée cible en minutes (optionnel)
             ton: Ton souhaité (optionnel)
             transcription_existante: Chemin vers transcription existante (Feature 3)
+            detecter_speakers: Active la diarisation Pyannote (optionnel)
+            fichier_mix: Fichier audio déjà concaténé (skip la concaténation)
 
         Returns:
             Chemin du fichier final
@@ -66,34 +71,52 @@ class PodcastEditor:
 
         dossier_sortie.mkdir(parents=True, exist_ok=True)
 
-        # Étape 1 : Concaténation
-        print("\n📍 ÉTAPE 1/4 : Concaténation des fichiers")
-        fichier_mix = dossier_sortie / "mix_complet.wav"
+        # Étape 1 : Concaténation (ou utilisation du fichier mix)
+        if fichier_mix:
+            print("\n📁 ÉTAPE 1/4 : Utilisation du fichier concaténé")
+            print(f"📄 Fichier : {fichier_mix.name}")
+            fichier_mix_final = fichier_mix
+        else:
+            print("\n📁 ÉTAPE 1/4 : Concaténation des fichiers")
+            fichier_mix_final = dossier_sortie / "mix_complet.wav"
 
-        self.audio_processor.concatener_fichiers(
-            fichiers_entree,
-            fichier_mix,
-            methode_tri=self.config['tri_fichiers']['methode'],
-            ordre_tri=self.config['tri_fichiers']['ordre']
-        )
+            self.audio_processor.concatener_fichiers(
+                fichiers_entree,
+                fichier_mix_final,
+                methode_tri=self.config['tri_fichiers']['methode'],
+                ordre_tri=self.config['tri_fichiers']['ordre']
+            )
 
         # Étape 2 : Transcription (Feature 3: skip si transcription fournie)
         if transcription_existante:
-            print("\n📍 ÉTAPE 2/4 : Chargement de la transcription existante")
+            print("\n📁 ÉTAPE 2/4 : Chargement de la transcription existante")
             print(f"📄 Utilisation de : {transcription_existante.name}")
 
             # Charger la transcription depuis le fichier
             transcription = self._charger_transcription(transcription_existante)
         else:
-            print("\n📍 ÉTAPE 2/4 : Transcription")
+            print("\n📁 ÉTAPE 2/4 : Transcription")
+
+            # Récupérer le token HF si diarisation demandée
+            token_hf = None
+            if detecter_speakers:
+                import os
+                token_hf = os.getenv('HUGGINGFACE_TOKEN')
+                if not token_hf:
+                    print("⚠️  HUGGINGFACE_TOKEN manquant dans .env")
+                    print("   La diarisation sera ignorée")
+                    print("   Obtenez un token sur : https://huggingface.co/settings/tokens")
+
             chemin_transcription = dossier_sortie / "transcription.txt"
             transcription = self.transcriber.transcrire(
-                fichier_mix,
-                chemin_transcription
+                fichier_mix_final,
+                chemin_transcription,
+                detecter_speakers=detecter_speakers,
+                token_hf=token_hf
             )
 
         # Étape 3 : Analyse IA
-        print("\n📍 ÉTAPE 3/4 : Analyse IA et génération de suggestions")
+        print("\n📁 ÉTAPE 3/4 : Analyse IA et génération de suggestions")
         suggestions = self.ai_analyzer.analyser_transcription(
             transcription,
             duree_cible=duree_cible,
@@ -105,7 +128,7 @@ class PodcastEditor:
         self.ai_analyzer.sauvegarder_suggestions(suggestions, fichier_suggestions)
 
         # Étape 4 : Sélection utilisateur
-        print("\n📍 ÉTAPE 4/4 : Sélection et montage")
+        print("\n📁 ÉTAPE 4/4 : Sélection et montage")
         suggestions_choisies = self._demander_selection_suggestion(suggestions)
 
         # Montage final - peut générer plusieurs fichiers
@@ -115,7 +138,7 @@ class PodcastEditor:
                 print(f"\n🎬 Montage {i}/{len(suggestions_choisies)} : {suggestion_choisie['titre']}")
 
             fichier_final = self._monter_depuis_suggestion(
-                fichier_mix,
+                fichier_mix_final,
                 suggestion_choisie,
                 dossier_sortie
             )
