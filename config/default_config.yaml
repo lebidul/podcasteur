@@ -30,7 +30,7 @@ transcription:
 # ========================================
 analyse_ia:
   modele: "claude-sonnet-4-5-20250929"  # Modèle Claude à utiliser
-  duree_cible: 5              # Durée cible du podcast en minutes
+  duree_cible: 3              # Durée cible du podcast en minutes
   ton: "informatif et dynamique"  # Ton souhaité pour les suggestions
                               # Options suggérées:
                               # - "informatif et dynamique"

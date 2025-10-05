@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt
 from pathlib import Path
 import yaml
 import os
+import sys
 
 
 class MainWindow(QMainWindow):
@@ -149,6 +150,19 @@ class MainWindow(QMainWindow):
 
         options_layout.addLayout(trans_layout)
 
+        # Dossier de sortie
+        sortie_layout = QHBoxLayout()
+        sortie_layout.addWidget(QLabel("Dossier de sortie :"))
+        self.sortie_input = QLineEdit("output")
+        sortie_layout.addWidget(self.sortie_input, 1)
+        btn_browse_sortie = QPushButton("Parcourir")
+        btn_browse_sortie.clicked.connect(self._browse_sortie_folder)
+        sortie_layout.addWidget(btn_browse_sortie)
+        options_layout.addLayout(sortie_layout)
+
+        options_group.setLayout(options_layout)
+        layout.addWidget(options_group)
+
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
 
@@ -282,14 +296,14 @@ class MainWindow(QMainWindow):
 
     def _start_concatenation(self):
         """Démarre la concaténation"""
-        from .workers.concat_worker import ConcatWorker
-        from src.audio_processor import AudioProcessor
+        from src.gui.workers.concat_worker import ConcatWorker
+        from ..audio_processor import AudioProcessor
 
         self._log("\n📍 ÉTAPE 1/4 : Concaténation")
 
         processor = AudioProcessor(self.config)
-        dossier_sortie = Path("output")
-        dossier_sortie.mkdir(exist_ok=True)
+        dossier_sortie = Path(self.sortie_input.text())
+        dossier_sortie.mkdir(parents=True, exist_ok=True)
         fichier_mix = dossier_sortie / "mix_complet.wav"
 
         self.concat_worker = ConcatWorker(
@@ -339,8 +353,26 @@ class MainWindow(QMainWindow):
 
     def _start_transcription(self):
         """Démarre la transcription"""
-        from .workers.transcription_worker import TranscriptionWorker
-        from src.transcriber import Transcriber
+
+        # Dans main_window.py, méthode _start_transcription
+        def _start_transcription(self):
+            """Démarre la transcription"""
+
+            # Vérifier si on est dans un exe
+            if getattr(sys, 'frozen', False):
+                QMessageBox.warning(
+                    self,
+                    "Fonctionnalité non disponible",
+                    "La transcription n'est pas disponible dans la version exécutable.\n\n"
+                    "Veuillez :\n"
+                    "1. Utiliser un fichier transcription existant\n"
+                    "2. OU installer Python et lancer : python podcasteur_gui.py"
+                )
+                self.btn_start.setEnabled(True)
+                return
+
+        from src.gui.workers.transcription_worker import TranscriptionWorker
+        from ..transcriber import Transcriber
 
         self._log("\n📍 ÉTAPE 2/4 : Transcription")
 
@@ -372,8 +404,8 @@ class MainWindow(QMainWindow):
 
     def _start_ai_analysis(self):
         """Démarre l'analyse IA"""
-        from .workers.ai_worker import AIWorker
-        from src.ai_analyzer import AIAnalyzer
+        from src.gui.workers.ai_worker import AIWorker
+        from ..ai_analyzer import AIAnalyzer
 
         self._log("\n📍 ÉTAPE 3/4 : Analyse IA")
 
@@ -395,6 +427,16 @@ class MainWindow(QMainWindow):
     def _on_ai_finished(self, suggestions):
         """Analyse IA terminée → afficher suggestions"""
         self.suggestions = suggestions
+
+        # CORRECTION : Ajouter le fichier source à TOUS les segments
+        fichier_source = str(self.fichier_mix) if self.fichier_mix else 'mix_complet.wav'
+        print(f"📎 Ajout fichier source aux suggestions : {fichier_source}")
+
+        for suggestion in self.suggestions:
+            for segment in suggestion['segments']:
+                if 'fichier' not in segment:
+                    segment['fichier'] = fichier_source
+
         self._show_suggestions_dialog()
 
     def _show_suggestions_dialog(self):
@@ -413,13 +455,13 @@ class MainWindow(QMainWindow):
 
     def _start_montage(self, suggestion):
         """Démarre le montage"""
-        from .workers.montage_worker import MontageWorker
-        from src.audio_processor import AudioProcessor
+        from src.gui.workers.montage_worker import MontageWorker
+        from ..audio_processor import AudioProcessor
 
         self._log(f"\n📍 ÉTAPE 4/4 : Montage - {suggestion['titre']}")
 
         processor = AudioProcessor(self.config)
-        dossier_sortie = Path("output")
+        dossier_sortie = Path(self.sortie_input.text())
 
         self.montage_worker = MontageWorker(
             processor,
@@ -521,6 +563,15 @@ class MainWindow(QMainWindow):
         )
         if file:
             self.transcription_file_input.setText(file)
+
+    def _browse_sortie_folder(self):
+        """Parcourir le dossier de sortie"""
+        folder = QFileDialog.getExistingDirectory(
+            self, "Sélectionner le dossier de sortie",
+            self.sortie_input.text()
+        )
+        if folder:
+            self.sortie_input.setText(folder)
 
     def _browse_file(self, line_edit):
         """Parcourir un fichier"""

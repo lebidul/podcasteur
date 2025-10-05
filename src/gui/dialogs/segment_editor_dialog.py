@@ -136,7 +136,7 @@ class SegmentEditorDialog(QDialog):
 
             # Durée (colonne 2)
             duree = seg['fin'] - seg['debut']
-            duree_item = QTableWidgetItem(f"{duree:.1f}s")
+            duree_item = QTableWidgetItem(self._formater_temps(duree))
             duree_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             duree_item.setFlags(duree_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(i, 2, duree_item)

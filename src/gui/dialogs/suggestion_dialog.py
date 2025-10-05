@@ -70,6 +70,26 @@ class SuggestionsDialog(QDialog):
         btn_ok.clicked.connect(self._valider_selection)
         btn_ok.setStyleSheet("padding: 8px; font-weight: bold;")
 
+        buttons_layout = QHBoxLayout()
+
+        btn_import = QPushButton("📁 Importer JSON")
+        btn_import.clicked.connect(self._importer_json)
+
+        btn_refine = QPushButton("🔄 Affiner avec feedback")
+        btn_refine.clicked.connect(self._affiner_suggestions)
+
+        btn_custom = QPushButton("✏️ Découpage personnalisé")
+        btn_custom.clicked.connect(self._decoupage_perso)
+
+        btn_cancel = QPushButton("Annuler")
+        btn_cancel.clicked.connect(self.reject)
+
+        btn_ok = QPushButton("✅ Monter cette suggestion")
+        btn_ok.setDefault(True)
+        btn_ok.clicked.connect(self._valider_selection)
+        btn_ok.setStyleSheet("padding: 8px; font-weight: bold;")
+
+        buttons_layout.addWidget(btn_import)
         buttons_layout.addWidget(btn_refine)
         buttons_layout.addWidget(btn_custom)
         buttons_layout.addStretch()
@@ -151,27 +171,35 @@ class SuggestionsDialog(QDialog):
         """Valide la sélection et ouvre l'éditeur de segments"""
         selected_id = self.button_group.checkedId()
         if selected_id >= 0:
-            suggestion = self.suggestions[selected_id].copy()  # Faire une copie
+            suggestion = self.suggestions[selected_id]
 
-            # IMPORTANT: S'assurer que tous les segments ont un champ 'fichier'
+            # IMPORTANT : Copier d'abord
+            suggestion_copy = {
+                'titre': suggestion['titre'],
+                'commentaire': suggestion['commentaire'],
+                'duree_estimee': suggestion['duree_estimee'],
+                'segments': []
+            }
+
+            # Puis ajouter les segments avec le fichier
             for seg in suggestion['segments']:
-                if 'fichier' not in seg:
-                    seg['fichier'] = 'mix_complet.wav'
+                segment_copy = seg.copy()
+                # Utiliser le fichier déjà présent OU ajouter mix_complet.wav par défaut
+                if 'fichier' not in segment_copy:
+                    segment_copy['fichier'] = 'mix_complet.wav'
+                suggestion_copy['segments'].append(segment_copy)
 
-            # Ouvrir l'éditeur de segments
+            # Ouvrir l'éditeur
             from src.gui.dialogs.segment_editor_dialog import SegmentEditorDialog
 
-            editor = SegmentEditorDialog(suggestion, self)
+            editor = SegmentEditorDialog(suggestion_copy, self)
 
             if editor.exec():
-                # Récupérer les segments modifiés
                 segments_modifies = editor.get_segments()
 
-                # Mettre à jour la suggestion avec les segments modifiés
-                suggestion_finale = suggestion.copy()
+                suggestion_finale = suggestion_copy.copy()
                 suggestion_finale['segments'] = segments_modifies
 
-                # Recalculer la durée
                 duree_totale = sum(s['fin'] - s['debut'] for s in segments_modifies)
                 suggestion_finale['duree_estimee'] = round(duree_totale / 60, 1)
 
@@ -300,6 +328,120 @@ Garde le même format JSON que précédemment."""
 
             self.suggestion_selectionnee = suggestion_finale
             self.accept()
+
+    def _importer_json(self):
+        """Importe un découpage depuis un fichier JSON"""
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        from pathlib import Path
+        import json
+
+        fichier, _ = QFileDialog.getOpenFileName(
+            self,
+            "Sélectionner un fichier de découpage JSON",
+            "",
+            "Fichiers JSON (*.json)"
+        )
+
+        if not fichier:
+            return
+
+        try:
+            with open(fichier, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Déterminer le format du JSON
+            segments = []
+
+            if 'segments' in data:
+                # Format fichier de métadonnées (output) ou suggestion
+                segments = data['segments']
+            elif isinstance(data, list):
+                # Format liste de segments directe
+                segments = data
+            else:
+                raise ValueError("Format JSON non reconnu")
+
+            # Normaliser les segments (gérer les différents formats)
+            segments_normalises = []
+            for i, seg in enumerate(segments):
+                segment_norm = {}
+
+                # Gérer format métadonnées (debut_source/fin_source/fichier_source)
+                if 'debut_source' in seg and 'fin_source' in seg:
+                    segment_norm['debut'] = seg['debut_source']
+                    segment_norm['fin'] = seg['fin_source']
+                    segment_norm['fichier'] = seg.get('fichier_source', 'mix_complet.wav')
+                    segment_norm['description'] = seg.get('description', f"Segment {i + 1}")
+                # Gérer format standard (debut/fin/fichier)
+                elif 'debut' in seg and 'fin' in seg:
+                    segment_norm['debut'] = seg['debut']
+                    segment_norm['fin'] = seg['fin']
+                    segment_norm['fichier'] = seg.get('fichier', 'mix_complet.wav')
+                    segment_norm['description'] = seg.get('description', f"Segment {i + 1}")
+                else:
+                    raise ValueError(
+                        f"Segment {i + 1} : champs 'debut' et 'fin' (ou 'debut_source' et 'fin_source') requis")
+
+                # Ignorer les segments [INTRO] et [OUTRO]
+                if segment_norm['description'] not in ['[INTRO]', '[OUTRO]']:
+                    # Validation
+                    if segment_norm['debut'] >= segment_norm['fin']:
+                        raise ValueError(f"Segment {i + 1} : début doit être avant fin")
+                    if segment_norm['debut'] < 0 or segment_norm['fin'] < 0:
+                        raise ValueError(f"Segment {i + 1} : timestamps doivent être positifs")
+
+                    segments_normalises.append(segment_norm)
+
+            if not segments_normalises:
+                raise ValueError("Aucun segment valide trouvé dans le fichier")
+
+            # Créer la suggestion
+            suggestion = {
+                'titre': data.get('podcast', 'Découpage importé').replace('.mp3', ''),
+                'commentaire': f'Importé depuis {Path(fichier).name}',
+                'duree_estimee': 0,
+                'segments': segments_normalises
+            }
+
+            # Calculer la durée
+            duree_totale = sum(s['fin'] - s['debut'] for s in segments_normalises)
+            suggestion['duree_estimee'] = round(duree_totale / 60, 1)
+
+            # Ouvrir l'éditeur
+            from src.gui.dialogs.segment_editor_dialog import SegmentEditorDialog
+
+            editor = SegmentEditorDialog(suggestion, self)
+
+            if editor.exec():
+                segments_modifies = editor.get_segments()
+
+                suggestion_finale = suggestion.copy()
+                suggestion_finale['segments'] = segments_modifies
+
+                duree_totale = sum(s['fin'] - s['debut'] for s in segments_modifies)
+                suggestion_finale['duree_estimee'] = round(duree_totale / 60, 1)
+
+                self.suggestion_selectionnee = suggestion_finale
+                self.accept()
+
+        except json.JSONDecodeError as e:
+            QMessageBox.critical(
+                self,
+                "Erreur JSON",
+                f"Le fichier n'est pas un JSON valide :\n{e}"
+            )
+        except ValueError as e:
+            QMessageBox.critical(
+                self,
+                "Format invalide",
+                str(e)
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erreur",
+                f"Impossible de charger le fichier :\n{e}"
+            )
 
     @staticmethod
     def _formater_temps(secondes: float) -> str:

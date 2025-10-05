@@ -7,9 +7,9 @@
 - [x] Fichier timestamp et durée en sortie avec les segments pour connaître où on en est écoutant la sortie : prendre le format de decoupage.json actuel et y ajouter attributs optionnels (début_output,fin_output,durée)
 - [x] Workflow semi-automatique qui permet de skip la transcription en fournissant un fichier de transcription
 - [x] Proposer fichier concaténé pour éviter l'étape de concaténation
-- [ ] GUI
+- [x] GUI
+- [x] Timestamps au dixième de seconde -> inutile
 - [ ] Pouvoir ajouter une musique de fond sur des segments
-- [ ] Timestamps au dixième de seconde
 - [ ] Gérer valeurs de fondu nues dans la config
 
 # GUI
@@ -18,10 +18,12 @@
 - [x] rendre découpage séctionné (manuel ou auto) dynamique et pouvoir y inclure (ou enlever) des morceaux  
 - [x] découpage personnalisé
 - [x] ajouter nom du fichier à l'édition des séquences
+- [x] dossier de sortie dans GUI
+- [x] affichage des suggestions
 - [ ] ton: picklist + 'Autre..'
 - [ ] .exe + mac + linux
 - [ ] étendre + intégrer onglet config
 - [ ] thème clair
-- [ ] affichage des suggestions
 - [ ] ajouter la possibilité de soumettre le découpage en json
 - [ ] workflow manuel
+- [ ] transcription dans .exe
