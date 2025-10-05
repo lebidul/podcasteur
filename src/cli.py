@@ -101,11 +101,16 @@ def cli():
     help='Activer la détection des speakers (nécessite token HuggingFace et pyannote.audio)'
 )
 @click.option(
+    '--mix',
+    type=click.Path(exists=True),
+    help='Fichier audio déjà concaténé (skip la concaténation)'
+)
+@click.option(
     '--config', '-c',
     type=click.Path(exists=True),
     help='Fichier de configuration personnalisé'
 )
-def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
+def auto(entrees, sortie, duree, ton, transcription, detect_speakers, mix, config):
     """
     Workflow automatique : transcription + analyse IA
 
@@ -113,6 +118,7 @@ def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
     - Des fichiers audio : fichier1.wav fichier2.mp3
     - Un dossier contenant des fichiers audio : dossier_audio/
     - Un mélange des deux
+    - Ignoré si --mix est utilisé
 
     Exemples :
 
@@ -123,22 +129,10 @@ def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
       podcasteur auto audio/*.wav --duree 3
 
       podcasteur auto audio/ --transcription transcript.txt --duree 5
+
+      podcasteur auto --mix mix_complet.wav --duree 5 --detect-speakers
     """
     click.echo("\n🎙️ Podcasteur - Workflow Automatique\n")
-
-    # Collecter tous les fichiers audio
-    fichiers_path = _collecter_fichiers_audio(entrees)
-
-    if not fichiers_path:
-        click.echo("❌ Erreur : Aucun fichier audio trouvé")
-        click.echo("\nFormats supportés : WAV, MP3, OGG, FLAC, M4A, AAC, WMA, OPUS")
-        return
-
-    # Afficher les fichiers à traiter
-    click.echo(f"\n📋 Fichiers à traiter ({len(fichiers_path)}) :")
-    for i, f in enumerate(fichiers_path, 1):
-        click.echo(f"   {i}. {f.name}")
-    click.echo()
 
     # Charger la configuration
     config_dict = _charger_config(config)
@@ -153,6 +147,31 @@ def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
         return
 
     dossier_sortie = Path(sortie)
+
+    # Gestion du fichier mix
+    fichier_mix_path = None
+    if mix:
+        # Utiliser le fichier mix fourni
+        fichier_mix_path = Path(mix)
+        click.echo(f"📁 Utilisation du fichier concaténé : {fichier_mix_path.name}")
+        click.echo("   ⏩ La concaténation sera ignorée\n")
+
+        # Les entrees ne sont pas nécessaires avec --mix
+        fichiers_path = []
+    else:
+        # Collecter tous les fichiers audio
+        fichiers_path = _collecter_fichiers_audio(entrees)
+
+        if not fichiers_path:
+            click.echo("❌ Erreur : Aucun fichier audio trouvé")
+            click.echo("\nFormats supportés : WAV, MP3, OGG, FLAC, M4A, AAC, WMA, OPUS")
+            return
+
+        # Afficher les fichiers à traiter
+        click.echo(f"\n📋 Fichiers à traiter ({len(fichiers_path)}) :")
+        for i, f in enumerate(fichiers_path, 1):
+            click.echo(f"   {i}. {f.name}")
+        click.echo()
 
     # Feature 3: Gestion transcription existante
     transcription_path = Path(transcription) if transcription else None
@@ -172,7 +191,8 @@ def auto(entrees, sortie, duree, ton, transcription, detect_speakers, config):
             duree_cible=duree,
             ton=ton,
             transcription_existante=transcription_path,
-            detecter_speakers=detect_speakers
+            detecter_speakers=detect_speakers,
+            fichier_mix=fichier_mix_path
         )
 
         click.echo(f"\n✅ Succès ! Podcast créé : {fichier_final}")

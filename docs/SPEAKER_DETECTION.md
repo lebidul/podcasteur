@@ -1,209 +1,194 @@
-# 👥 Détection de speakers (Diarisation)
+# 🎙️ Podcasteur avec WhisperX
 
-Guide pour utiliser la fonctionnalité optionnelle de détection et identification des speakers dans Podcasteur.
+## ⚡ Pourquoi WhisperX ?
 
----
+Podcasteur utilise maintenant **WhisperX** au lieu de Whisper classique :
 
-## 📋 Qu'est-ce que la diarisation ?
+- ✅ **Plus rapide** : jusqu'à 70% plus rapide que Whisper
+- ✅ **Meilleurs timestamps** : précision au mot près grâce à l'alignement
+- ✅ **Diarisation intégrée** : détection des speakers sans pyannote séparé
+- ✅ **Optimisé pour le français** : modèles d'alignement spécifiques
+- ✅ **Meilleure gestion mémoire** : libération automatique
 
-La diarisation audio est le processus d'identification des différents speakers (interlocuteurs) dans un enregistrement audio. Au lieu d'avoir simplement :
-
-```
-[00:30 - 02:45] Bonjour, je suis très heureux d'être ici...
-```
-
-Vous obtenez :
-
-```
-[00:30 - 02:45] [SPEAKER_00] Bonjour, je suis très heureux d'être ici...
-[02:46 - 05:10] [SPEAKER_01] Merci de nous recevoir...
-```
-
----
-
-## ⚙️ Installation
-
-### 1. Installer pyannote.audio
+## 📦 Installation
 
 ```bash
-pip install pyannote.audio
+# Installer WhisperX
+pip install git+https://github.com/m-bain/whisperx.git
+
+# Optionnel : Support GPU pour 10x plus rapide
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
-
-### 2. Créer un compte HuggingFace
-
-1. Aller sur https://huggingface.co
-2. Créer un compte gratuit
-3. Aller sur https://huggingface.co/settings/tokens
-4. Créer un nouveau token (Read access suffit)
-5. Copier le token
-
-### 3. Accepter les conditions du modèle
-
-1. Aller sur https://huggingface.co/pyannote/speaker-diarization-3.1
-2. Cliquer sur "Agree and access repository"
-3. Accepter les conditions d'utilisation
-
-### 4. Configurer le token
-
-Dans votre fichier `.env` :
-
-```bash
-ANTHROPIC_API_KEY=votre_cle_api_ici
-HUGGINGFACE_TOKEN=votre_token_hf_ici
-```
-
----
 
 ## 🚀 Utilisation
 
-### Activation de la détection
+### Sans détection de speakers (aucune config requise)
 
-Ajoutez simplement le flag `--detect-speakers` :
+```bash
+podcasteur auto audio/ --duree 5
+```
+
+### Avec détection de speakers (nécessite token HuggingFace)
 
 ```bash
 podcasteur auto audio/ --duree 5 --detect-speakers
 ```
 
-### Exemples d'usage
+## 🔑 Configuration pour la diarisation
 
-**Interview avec 2 personnes :**
-```bash
-podcasteur auto interview.wav --duree 10 --detect-speakers --ton "informatif"
+Si vous voulez la détection des speakers :
+
+1. **Créez un compte** sur https://huggingface.co
+
+2. **Acceptez les conditions** (une seule fois) :
+   - https://huggingface.co/pyannote/speaker-diarization-3.1
+   - https://huggingface.co/pyannote/segmentation-3.0
+
+3. **Créez un token** : https://huggingface.co/settings/tokens
+   - Type : "Read"
+   - Copiez le token
+
+4. **Ajoutez-le dans .env** :
+   ```
+   ANTHROPIC_API_KEY=votre_cle_claude
+   HUGGINGFACE_TOKEN=votre_token_hf
+   ```
+
+## 🎯 Choix du modèle (config/default_config.yaml)
+
+```yaml
+transcription:
+  modele: "base"  # Recommandé pour le français
 ```
 
-**Table ronde :**
-```bash
-podcasteur auto table_ronde/ --duree 15 --detect-speakers
+### Modèles disponibles (temps pour 1h d'audio)
+
+| Modèle | CPU | GPU | Précision | Mémoire |
+|--------|-----|-----|-----------|---------|
+| tiny | ~40min | ~2min | 85% | 1 GB |
+| base | **~1h** | **~5min** | **90%** | **1.5 GB** |
+| small | ~2h | ~10min | 94% | 2.5 GB |
+| medium | ~4h | ~20min | 96% | 5 GB |
+| large-v2 | ~8h | ~40min | 98% | 10 GB |
+
+💡 **Pour Le Bidul** : `base` est parfait (rapide + précis)
+
+## 📊 Comparaison Whisper vs WhisperX
+
+### Exemple : 30 minutes d'audio
+
+**Whisper classique :**
+```
+Transcription : 5 minutes
+Timestamps : ±2-3 secondes
+Diarisation : Non incluse (nécessite pyannote séparé)
+Total : ~5-10 minutes
 ```
 
-**Avec transcription existante (skip la diarisation) :**
-```bash
-podcasteur auto audio/ --transcription transcript_avec_speakers.txt --duree 5
+**WhisperX :**
+```
+Transcription : 3 minutes
+Alignement : 1 minute
+Timestamps : ±0.1 seconde (précis au mot)
+Diarisation : 2 minutes (intégrée)
+Total : ~6 minutes (tout inclus)
 ```
 
----
+## 🎬 Sortie générée
 
-## 📊 Sortie
-
-### Format de transcription
-
-Le fichier `transcription_timestamps.txt` contiendra :
+Après transcription avec `--detect-speakers`, vous obtenez :
 
 ```
-[00:00 - 00:15] [SPEAKER_00] Bonjour à tous
-[00:16 - 00:32] [SPEAKER_01] Merci d'être là
-[00:33 - 01:05] [SPEAKER_00] Aujourd'hui nous allons parler de...
-[01:06 - 01:28] [SPEAKER_02] C'est très intéressant
+sortie/
+└── transcription.txt                    # Texte complet
+└── transcription_timestamps.txt         # Avec timestamps et speakers
 ```
 
-### Utilisation par Claude
-
-Claude recevra la transcription avec les identifiants de speakers et pourra :
-- Identifier les segments où un speaker spécifique parle
-- Créer des montages centrés sur certains speakers
-- Équilibrer les temps de parole
-
----
-
-## ⏱️ Performance
-
-**Temps de traitement estimé :**
-
-| Durée audio | Whisper seul | Whisper + Diarisation |
-|-------------|--------------|----------------------|
-| 5 min       | ~30s         | ~1-2 min             |
-| 15 min      | ~1-2 min     | ~4-6 min             |
-| 30 min      | ~3-5 min     | ~10-15 min           |
-
-La diarisation double environ le temps de traitement.
-
-**Optimisation :**
-Une fois la transcription avec speakers générée, vous pouvez la réutiliser :
-
-```bash
-# 1ère fois : avec détection (lent)
-podcasteur auto audio/ --detect-speakers --duree 5
-
-# Fois suivantes : réutiliser la transcription (rapide)
-podcasteur auto audio/ --transcription sortie/podcast_XXX/transcription_timestamps.txt --duree 5
+**Exemple de transcription_timestamps.txt :**
+```
+[00:00 - 00:15] [SPEAKER_00] Bienvenue au Blue Zinc pour le pliage du Bidul
+[00:16 - 00:32] [SPEAKER_01] Merci d'être là, on a plein de choses à partager
+[00:33 - 00:58] [SPEAKER_00] Aujourd'hui on va parler de la programmation culturelle
 ```
 
----
+## 🐛 Dépannage
 
-## 💡 Cas d'usage
-
-### Quand utiliser la diarisation ?
-
-✅ **Utile pour :**
-- Interviews longues (>10 min) avec 2-3 personnes fixes
-- Tables rondes ou débats
-- Podcasts conversationnels réguliers
-- Montages centrés sur un speaker spécifique
-
-❌ **Moins utile pour :**
-- Vox pop avec beaucoup de personnes différentes
-- Enregistrements courts (<5 min)
-- Narration solo
-- Reportages avec intervention brève de plusieurs personnes
-
-### Exemples de feedback à Claude
-
-Avec la diarisation, vous pouvez donner des feedbacks plus précis :
-
-```
-"Garde seulement les segments où SPEAKER_00 parle"
-"Équilibre entre SPEAKER_00 et SPEAKER_01"
-"Focus sur l'interview de SPEAKER_02"
-```
-
----
-
-## 🔧 Dépannage
-
-### Erreur "pyannote.audio not installed"
+### "No module named 'whisperx'"
 
 ```bash
-pip install pyannote.audio
+pip install git+https://github.com/m-bain/whisperx.git
 ```
 
-### Erreur "401 Unauthorized"
+### "CUDA out of memory"
 
-Vérifiez que :
-1. Votre token HuggingFace est correct dans `.env`
-2. Vous avez accepté les conditions sur https://huggingface.co/pyannote/speaker-diarization-3.1
+Réduisez la taille du modèle dans la config :
+```yaml
+transcription:
+  modele: "tiny"  # Au lieu de "base"
+```
 
-### Erreur "CUDA out of memory"
+### Diarisation ne fonctionne pas
 
-Pyannote utilise beaucoup de mémoire GPU. Solutions :
-- Réduire la durée des fichiers audio
-- Utiliser CPU uniquement (plus lent) en désactivant CUDA
+1. Vérifiez que vous avez accepté les conditions sur HuggingFace
+2. Attendez 5 minutes après l'acceptation
+3. Vérifiez votre token dans `.env`
+4. Essayez de régénérer un nouveau token
 
-### La détection ne fonctionne pas bien
+### WhisperX très lent (CPU)
 
-La qualité de la diarisation dépend de :
-- **Qualité audio** : Meilleure avec peu de bruit de fond
-- **Séparation des voix** : Difficile si les speakers se coupent
-- **Nombre de speakers** : Plus précis avec 2-3 speakers qu'avec 10+
+WhisperX est optimisé pour GPU. Sur CPU :
+- Utilisez `modele: "tiny"` ou `"base"`
+- Comptez ~1h de traitement pour 1h d'audio avec "base"
 
----
+Avec GPU (NVIDIA) :
+- Installez PyTorch CUDA
+- 10-20x plus rapide !
+
+## 💡 Astuces
+
+### Réutiliser une transcription
+
+Si vous avez déjà transcrit, évitez de recommencer :
+
+```bash
+# 1ère fois : transcription complète
+podcasteur auto audio/ --duree 5
+
+# Réédition : utiliser la transcription existante
+podcasteur auto audio/ --transcription sortie/transcription.txt --duree 3
+```
+
+### Comparer plusieurs versions rapidement
+
+```bash
+# Générer 3 versions en une commande
+podcasteur auto audio/ --duree 5
+
+# Aux suggestions, tapez : 1-3
+# → Crée 3 fichiers MP3 différents
+```
+
+### Affiner avec feedback
+
+```bash
+podcasteur auto audio/ --duree 5
+
+# Option : r (refine)
+# Feedback : "Plus court, 3min max, garde les moments drôles"
+# → Claude génère de nouvelles suggestions
+```
+
+## 🔬 Technique : Comment fonctionne WhisperX ?
+
+1. **Transcription Whisper** : Génère le texte et timestamps approximatifs
+2. **Forced alignment** : Aligne précisément chaque mot avec l'audio (modèle français spécifique)
+3. **Diarisation** (optionnel) : Pyannote identifie qui parle quand
+4. **Assignment** : Chaque mot est attribué à un speaker
+
+Résultat : transcription parfaitement synchronisée avec identification des intervenants !
 
 ## 📚 Ressources
 
-- [Pyannote.audio documentation](https://github.com/pyannote/pyannote-audio)
-- [HuggingFace tokens](https://huggingface.co/settings/tokens)
-- [Modèle de diarisation](https://huggingface.co/pyannote/speaker-diarization-3.1)
-
----
-
-## ⚖️ Considérations éthiques
-
-La diarisation identifie les speakers mais **ne les nomme pas**. Les speakers sont étiquetés SPEAKER_00, SPEAKER_01, etc.
-
-Pour des raisons de confidentialité :
-- Ne partagez pas les transcriptions avec identification de speakers sans consentement
-- Les identifiants de speakers sont basés sur les voix, pas sur l'identité réelle
-- Respectez la vie privée des personnes enregistrées
-
----
-
-**Bon podcasting avec détection de speakers ! 🎙️👥**
+- WhisperX : https://github.com/m-bain/whisperx
+- Pyannote : https://github.com/pyannote/pyannote-audio
+- HuggingFace : https://huggingface.co
