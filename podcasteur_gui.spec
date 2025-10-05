@@ -18,6 +18,8 @@ a = Analysis(
         ('.env.example', '.'),
         ('README_WINDOWS.txt', '.'),
         ('RELEASE_NOTES.md', '.'),
+        ('assets/intro.wav', 'assets'),
+        ('assets/outro.wav', 'assets'),
     ],
     hiddenimports=[
         'anthropic',

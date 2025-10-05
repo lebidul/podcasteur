@@ -89,6 +89,10 @@ jobs:
           cp QUICKSTART.md "${package_name}/"
           cp LICENSE "${package_name}/" 2>/dev/null || echo "Pas de LICENSE trouvée"
           
+          mkdir -p "${dist_name}/assets"
+          cp assets/intro.wav "${dist_name}/assets/" 2>/dev/null || echo "Pas d'intro"
+          cp assets/outro.wav "${dist_name}/assets/" 2>/dev/null || echo "Pas d'outro"
+          
           # Copier les wheels/tar.gz du build
           cp dist/* "${package_name}/" 2>/dev/null || true
           
