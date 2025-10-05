@@ -18,12 +18,12 @@
 - [x] rendre découpage séctionné (manuel ou auto) dynamique et pouvoir y inclure (ou enlever) des morceaux  
 - [x] découpage personnalisé
 - [x] ajouter nom du fichier à l'édition des séquences
+- [x] dossier de sortie dans GUI
+- [x] affichage des suggestions
 - [ ] ton: picklist + 'Autre..'
 - [ ] .exe + mac + linux
 - [ ] étendre + intégrer onglet config
 - [ ] thème clair
-- [x] affichage des suggestions
 - [ ] ajouter la possibilité de soumettre le découpage en json
 - [ ] workflow manuel
-- [ ] dossier de sortie dans GUI
 - [ ] transcription dans .exe
