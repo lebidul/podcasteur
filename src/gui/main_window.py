@@ -271,6 +271,20 @@ class MainWindow(QMainWindow):
                                  "ANTHROPIC_API_KEY non définie dans .env")
             return
 
+        # Vérifier le dossier de sortie
+        if not self.sortie_input.text().strip():
+            QMessageBox.warning(self, "Dossier de sortie manquant",
+                                "Veuillez sélectionner un dossier de sortie.")
+            return
+
+        dossier_sortie = Path(self.sortie_input.text())
+        try:
+            dossier_sortie.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur dossier de sortie",
+                                 f"Impossible de créer le dossier : {e}")
+            return
+
         self.btn_start.setEnabled(False)
         self._log("🚀 Démarrage du workflow automatique...")
         self._log(f"   Mode mix existant : {'OUI' if mode_mix else 'NON'}")
@@ -590,15 +604,30 @@ class MainWindow(QMainWindow):
 
     def _charger_config(self):
         """Charge la configuration"""
-        config_path = Path(__file__).parent.parent.parent / 'config' / 'default_config.yaml'
+        # Gérer le mode PyInstaller
+        if getattr(sys, 'frozen', False):
+            # Mode exécutable
+            base_path = Path(sys._MEIPASS)
+        else:
+            # Mode développement
+            base_path = Path(__file__).parent.parent.parent
+
+        config_path = base_path / 'config' / 'default_config.yaml'
+
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as f:
                 return yaml.safe_load(f)
+
+        # Configuration par défaut si fichier absent
         return {
             'elements_sonores': {
                 'activer': False,
-                'generique_debut': {'fichier': 'assets/intro.mp3'},
-                'generique_fin': {'fichier': 'assets/outro.mp3'}
+                'generique_debut': {'fichier': 'assets/intro.wav'},
+                'generique_fin': {'fichier': 'assets/outro.wav'}
+            },
+            'tri_fichiers': {
+                'methode': 'alphabetique',
+                'ordre': 'croissant'
             }
         }
 
