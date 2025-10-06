@@ -12,7 +12,7 @@ if getattr(sys, 'frozen', False):
     # Mode exécutable PyInstaller
     application_path = sys._MEIPASS
     # Import depuis le bundle PyInstaller
-    from main_window import MainWindow
+    from src.gui.main_window import MainWindow
 else:
     # Mode développement/script normal
     application_path = Path(__file__).parent
