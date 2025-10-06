@@ -5,26 +5,19 @@ Point d'entrée de l'interface graphique Podcasteur
 import sys
 import os
 from pathlib import Path
+from PyQt6.QtWidgets import QApplication
 
-# Ajouter le dossier parent au path si nécessaire
+# Gérer les imports selon le contexte d'exécution
 if getattr(sys, 'frozen', False):
     # Mode exécutable PyInstaller
     application_path = sys._MEIPASS
-else:
-    # Mode développement
-    application_path = Path(__file__).parent
-
-# Ajouter au path Python
-if str(application_path) not in sys.path:
-    sys.path.insert(0, str(application_path))
-
-from PyQt6.QtWidgets import QApplication
-
-# Import absolu au lieu de relatif
-try:
+    # Import depuis le bundle PyInstaller
     from main_window import MainWindow
-except ImportError:
-    from src.gui.main_window import MainWindow
+else:
+    # Mode développement/script normal
+    application_path = Path(__file__).parent
+    # Import relatif normal
+    from .main_window import MainWindow
 
 
 def main():

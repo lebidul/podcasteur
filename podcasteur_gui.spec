@@ -20,6 +20,7 @@ a = Analysis(
         ('RELEASE_NOTES.md', '.'),
         ('assets/intro.wav', 'assets'),
         ('assets/outro.wav', 'assets'),
+        ('assets/icon.ico', 'assets'),
     ],
     hiddenimports=[
         'anthropic',
