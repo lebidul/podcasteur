@@ -10,7 +10,7 @@ src_path = str(Path.cwd() / 'src')
 
 a = Analysis(
     ['podcasteur_gui.py'],
-    pathex=[src_path],  # Ajouter src au path
+    pathex=[src_path, str(Path.cwd())],
     binaries=[],
     datas=[
         ('config/default_config.yaml', 'config'),

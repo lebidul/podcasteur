@@ -28,8 +28,11 @@ jobs:
           python -m pip install --upgrade pip
           pip uninstall pathlib -y
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pyinstaller-hooks-contrib
 
+      - name: Verify PyQt6 installation
+        run: |
+          python -c "import PyQt6; print(f'PyQt6 version: {PyQt6.QtCore.PYQT_VERSION_STR}')"
 
       - name: Build executable
         run: |
