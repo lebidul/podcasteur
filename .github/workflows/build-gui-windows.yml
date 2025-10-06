@@ -32,7 +32,7 @@ jobs:
 
       - name: Verify PyQt6 installation
         run: |
-          python -c "import PyQt6; print(f'PyQt6 version: {PyQt6.QtCore.PYQT_VERSION_STR}')"
+          python -c "from PyQt6.QtCore import PYQT_VERSION_STR; print(f'PyQt6 version: {PYQT_VERSION_STR}')"
 
       - name: Build executable
         run: |
