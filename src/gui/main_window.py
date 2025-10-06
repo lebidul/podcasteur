@@ -153,7 +153,8 @@ class MainWindow(QMainWindow):
         # Dossier de sortie
         sortie_layout = QHBoxLayout()
         sortie_layout.addWidget(QLabel("Dossier de sortie :"))
-        self.sortie_input = QLineEdit("output")
+        self.sortie_input = QLineEdit()
+        self.sortie_input.setPlaceholderText("Sélectionnez un dossier de sortie...")
         sortie_layout.addWidget(self.sortie_input, 1)
         btn_browse_sortie = QPushButton("Parcourir")
         btn_browse_sortie.clicked.connect(self._browse_sortie_folder)
