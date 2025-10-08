@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QPushButton, QFileDialog,
     QListWidget, QSpinBox, QLineEdit, QTextEdit,
-    QProgressBar, QCheckBox, QGroupBox, QMessageBox
+    QProgressBar, QCheckBox, QGroupBox, QMessageBox,
+    QComboBox, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -113,8 +114,58 @@ class MainWindow(QMainWindow):
         ton_layout = QHBoxLayout()
         ton_layout.addWidget(QLabel("Ton souhaité :"))
         self.ton_input = QLineEdit("informatif et dynamique")
+        self.ton_combo = QComboBox()
+        self.ton_combo.addItems([
+            "informatif et dynamique",  # ← Défaut
+            "détendu et conversationnel",
+            "professionnel et concis",
+            "créatif et narratif"
+        ])
+
         ton_layout.addWidget(self.ton_input)
         options_layout.addLayout(ton_layout)
+
+        # Nombre de suggestions
+        suggestions_layout = QHBoxLayout()
+        suggestions_layout.addWidget(QLabel("Nombre de suggestions :"))
+        self.suggestions_spin = QSpinBox()
+        self.suggestions_spin.setMinimum(1)
+        self.suggestions_spin.setMaximum(5)
+        self.suggestions_spin.setValue(self.config.get('analyse_ia', {}).get('nombre_suggestions', 3))
+        suggestions_layout.addWidget(self.suggestions_spin)
+        suggestions_layout.addStretch()
+        options_layout.addLayout(suggestions_layout)
+
+        # Format d'export
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel("Format d'export :"))
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(['mp3', 'wav', 'flac'])
+        format_actuel = self.config.get('audio', {}).get('format_export', 'mp3')
+        self.format_combo.setCurrentText(format_actuel)
+        format_layout.addWidget(self.format_combo)
+        format_layout.addStretch()
+        options_layout.addLayout(format_layout)
+
+        # Qualité audio (seulement pour MP3)
+        qualite_layout = QHBoxLayout()
+        qualite_layout.addWidget(QLabel("Qualité audio (MP3) :"))
+        self.qualite_combo = QComboBox()
+        self.qualite_combo.addItems(['128k', '192k', '256k', '320k'])
+        debit_actuel = self.config.get('audio', {}).get('debit', '192k')
+        self.qualite_combo.setCurrentText(debit_actuel)
+        qualite_layout.addWidget(self.qualite_combo)
+        qualite_layout.addStretch()
+        options_layout.addLayout(qualite_layout)
+
+        # Connecter le changement de format pour activer/désactiver qualité
+        self.format_combo.currentTextChanged.connect(self._on_format_changed)
+        self._on_format_changed(self.format_combo.currentText())  # Init
+
+        # Normalisation audio
+        self.normalize_check = QCheckBox("Normaliser l'audio")
+        self.normalize_check.setChecked(self.config.get('audio', {}).get('normaliser', True))
+        options_layout.addWidget(self.normalize_check)
 
         # Checkbox speakers
         self.detect_speakers_check = QCheckBox("Détecter les speakers (nécessite token HF)")
@@ -213,6 +264,38 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
+        # === SECTION AUDIO ===
+        audio_group = QGroupBox("Paramètres audio")
+        audio_layout = QVBoxLayout()
+
+        # Durée des fondus
+        fondu_layout = QHBoxLayout()
+        fondu_layout.addWidget(QLabel("Durée des fondus (ms) :"))
+        self.fondu_spin = QSpinBox()
+        self.fondu_spin.setMinimum(0)
+        self.fondu_spin.setMaximum(5000)
+        self.fondu_spin.setSingleStep(100)
+        self.fondu_spin.setValue(self.config.get('audio', {}).get('duree_fondu', 1000))
+        fondu_layout.addWidget(self.fondu_spin)
+        fondu_layout.addStretch()
+        audio_layout.addLayout(fondu_layout)
+
+        # Silence entre segments
+        silence_layout = QHBoxLayout()
+        silence_layout.addWidget(QLabel("Silence entre segments (ms) :"))
+        self.silence_spin = QSpinBox()
+        self.silence_spin.setMinimum(0)
+        self.silence_spin.setMaximum(5000)
+        self.silence_spin.setSingleStep(100)
+        self.silence_spin.setValue(self.config.get('audio', {}).get('silence_entre_segments', 1000))
+        silence_layout.addWidget(self.silence_spin)
+        silence_layout.addStretch()
+        audio_layout.addLayout(silence_layout)
+
+        audio_group.setLayout(audio_layout)
+        layout.addWidget(audio_group)
+
+        # === SECTION ÉLÉMENTS SONORES ===
         sound_group = QGroupBox("Éléments sonores")
         sound_layout = QVBoxLayout()
 
@@ -220,36 +303,137 @@ class MainWindow(QMainWindow):
         self.enable_sounds_check.setChecked(
             self.config.get('elements_sonores', {}).get('activer', False)
         )
+        sound_layout.addWidget(self.enable_sounds_check)
 
+        # Intro
         intro_layout = QHBoxLayout()
         intro_layout.addWidget(QLabel("Intro :"))
         self.intro_input = QLineEdit(
-            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('fichier', 'assets/intro.mp3')
+            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('fichier', 'assets/intro.wav')
         )
         btn_intro = QPushButton("Parcourir")
         btn_intro.clicked.connect(lambda: self._browse_file(self.intro_input))
         intro_layout.addWidget(self.intro_input)
         intro_layout.addWidget(btn_intro)
+        sound_layout.addLayout(intro_layout)
 
+        # Volume intro
+        intro_vol_layout = QHBoxLayout()
+        intro_vol_layout.addWidget(QLabel("Volume intro (0.0 - 1.0) :"))
+        self.intro_volume_spin = QDoubleSpinBox()
+        self.intro_volume_spin.setMinimum(0.0)
+        self.intro_volume_spin.setMaximum(1.0)
+        self.intro_volume_spin.setSingleStep(0.1)
+        self.intro_volume_spin.setValue(
+            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('volume', 0.8)
+        )
+        intro_vol_layout.addWidget(self.intro_volume_spin)
+        intro_vol_layout.addStretch()
+        sound_layout.addLayout(intro_vol_layout)
+
+        # Outro
         outro_layout = QHBoxLayout()
         outro_layout.addWidget(QLabel("Outro :"))
         self.outro_input = QLineEdit(
-            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('fichier', 'assets/outro.mp3')
+            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('fichier', 'assets/outro.wav')
         )
         btn_outro = QPushButton("Parcourir")
         btn_outro.clicked.connect(lambda: self._browse_file(self.outro_input))
         outro_layout.addWidget(self.outro_input)
         outro_layout.addWidget(btn_outro)
-
-        sound_layout.addWidget(self.enable_sounds_check)
-        sound_layout.addLayout(intro_layout)
         sound_layout.addLayout(outro_layout)
+
+        # Volume outro
+        outro_vol_layout = QHBoxLayout()
+        outro_vol_layout.addWidget(QLabel("Volume outro (0.0 - 1.0) :"))
+        self.outro_volume_spin = QDoubleSpinBox()
+        self.outro_volume_spin.setMinimum(0.0)
+        self.outro_volume_spin.setMaximum(1.0)
+        self.outro_volume_spin.setSingleStep(0.1)
+        self.outro_volume_spin.setValue(
+            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('volume', 0.8)
+        )
+        outro_vol_layout.addWidget(self.outro_volume_spin)
+        outro_vol_layout.addStretch()
+        sound_layout.addLayout(outro_vol_layout)
+
         sound_group.setLayout(sound_layout)
         layout.addWidget(sound_group)
 
-        btn_save = QPushButton("Sauvegarder la configuration")
+        # === SECTION TRI FICHIERS ===
+        tri_group = QGroupBox("Tri des fichiers audio")
+        tri_layout = QVBoxLayout()
+
+        # Méthode de tri
+        methode_layout = QHBoxLayout()
+        methode_layout.addWidget(QLabel("Méthode de tri :"))
+        self.tri_methode_combo = QComboBox()
+        self.tri_methode_combo.addItems(['alphabetique', 'date'])
+        methode_actuelle = self.config.get('tri_fichiers', {}).get('methode', 'alphabetique')
+        # Mapper "nom" -> "alphabetique" pour compatibilité
+        if methode_actuelle == 'nom':
+            methode_actuelle = 'alphabetique'
+        self.tri_methode_combo.setCurrentText(methode_actuelle)
+        methode_layout.addWidget(self.tri_methode_combo)
+        methode_layout.addStretch()
+        tri_layout.addLayout(methode_layout)
+
+        # Ordre de tri
+        ordre_layout = QHBoxLayout()
+        ordre_layout.addWidget(QLabel("Ordre de tri :"))
+        self.tri_ordre_combo = QComboBox()
+        self.tri_ordre_combo.addItems(['croissant', 'decroissant'])
+        ordre_actuel = self.config.get('tri_fichiers', {}).get('ordre', 'croissant')
+        # Mapper "asc"/"desc" pour compatibilité
+        if ordre_actuel == 'asc':
+            ordre_actuel = 'croissant'
+        elif ordre_actuel == 'desc':
+            ordre_actuel = 'decroissant'
+        self.tri_ordre_combo.setCurrentText(ordre_actuel)
+        ordre_layout.addWidget(self.tri_ordre_combo)
+        ordre_layout.addStretch()
+        tri_layout.addLayout(ordre_layout)
+
+        tri_group.setLayout(tri_layout)
+        layout.addWidget(tri_group)
+
+        # === SECTION IA ===
+        ia_group = QGroupBox("Paramètres d'analyse IA")
+        ia_layout = QVBoxLayout()
+
+        # Modèle Claude
+        modele_layout = QHBoxLayout()
+        modele_layout.addWidget(QLabel("Modèle Claude :"))
+        self.modele_input = QLineEdit(
+            self.config.get('analyse_ia', {}).get('modele', 'claude-sonnet-4-5-20250929')
+        )
+        self.modele_input.setPlaceholderText("claude-sonnet-4-5-20250929")
+        modele_layout.addWidget(self.modele_input)
+        ia_layout.addLayout(modele_layout)
+
+        # Température
+        temp_layout = QHBoxLayout()
+        temp_layout.addWidget(QLabel("Température (0.0 - 1.0) :"))
+        self.temperature_spin = QDoubleSpinBox()
+        self.temperature_spin.setMinimum(0.0)
+        self.temperature_spin.setMaximum(1.0)
+        self.temperature_spin.setSingleStep(0.1)
+        self.temperature_spin.setValue(
+            self.config.get('analyse_ia', {}).get('temperature', 0.7)
+        )
+        temp_layout.addWidget(self.temperature_spin)
+        temp_layout.addStretch()
+        ia_layout.addLayout(temp_layout)
+
+        ia_group.setLayout(ia_layout)
+        layout.addWidget(ia_group)
+
+        # Bouton sauvegarder
+        btn_save = QPushButton("💾 Sauvegarder la configuration")
+        btn_save.setStyleSheet("padding: 8px; font-weight: bold;")
         btn_save.clicked.connect(self._save_config)
         layout.addWidget(btn_save)
+
         layout.addStretch()
 
         return widget
@@ -327,19 +511,25 @@ class MainWindow(QMainWindow):
         dossier_sortie.mkdir(parents=True, exist_ok=True)
         fichier_mix = dossier_sortie / "mix_complet.wav"
 
+        # Mapper les valeurs GUI vers les valeurs attendues par audio_processor
+        methode_map = {'alphabetique': 'nom', 'date': 'date'}
+        ordre_map = {'croissant': 'asc', 'decroissant': 'desc'}
+
+        methode = methode_map.get(self.config['tri_fichiers']['methode'], 'nom')
+        ordre = ordre_map.get(self.config['tri_fichiers']['ordre'], 'asc')
+
         self.concat_worker = ConcatWorker(
             processor,
             self.fichiers_audio,
             fichier_mix,
-            methode_tri=self.config['tri_fichiers']['methode'],
-            ordre_tri=self.config['tri_fichiers']['ordre']
+            methode_tri=methode,
+            ordre_tri=ordre
         )
 
         self.concat_worker.progress.connect(self._update_progress)
         self.concat_worker.finished.connect(self._on_concat_finished)
         self.concat_worker.error.connect(self._on_error)
         self.concat_worker.start()
-
     def _on_concat_finished(self, fichier_mix):
         """Concaténation terminée → lancer transcription"""
         self.fichier_mix = fichier_mix
@@ -481,7 +671,8 @@ class MainWindow(QMainWindow):
             analyzer,
             self.transcription,
             duree_cible=self.duree_spin.value(),
-            ton=self.ton_input.text()
+            ton=self.ton_combo.currentText(),
+            nombre_suggestions=self.suggestions_spin.value()  # ← AJOUTER
         )
 
         self.ai_worker.progress.connect(self._update_progress)
@@ -605,6 +796,10 @@ class MainWindow(QMainWindow):
         else:
             self.files_list.setEnabled(True)
 
+    def _on_format_changed(self, format_str):
+        """Active/désactive les options de qualité selon le format"""
+        self.qualite_combo.setEnabled(format_str == 'mp3')
+
     def _toggle_transcription_mode(self, state):
         """Active/désactive le mode transcription existante"""
         is_trans = state == Qt.CheckState.Checked.value
@@ -659,11 +854,34 @@ class MainWindow(QMainWindow):
 
     def _save_config(self):
         """Sauvegarde la configuration"""
+        # Audio
+        self.config['audio']['duree_fondu'] = self.fondu_spin.value()
+        self.config['audio']['silence_entre_segments'] = self.silence_spin.value()
+
+        # Éléments sonores
         self.config['elements_sonores']['activer'] = self.enable_sounds_check.isChecked()
         self.config['elements_sonores']['generique_debut']['fichier'] = self.intro_input.text()
+        self.config['elements_sonores']['generique_debut']['volume'] = self.intro_volume_spin.value()
         self.config['elements_sonores']['generique_fin']['fichier'] = self.outro_input.text()
-        self._log("Configuration sauvegardée")
+        self.config['elements_sonores']['generique_fin']['volume'] = self.outro_volume_spin.value()
+
+        # Tri fichiers
+        self.config['tri_fichiers']['methode'] = self.tri_methode_combo.currentText()
+        self.config['tri_fichiers']['ordre'] = self.tri_ordre_combo.currentText()
+
+        # IA
+        self.config['analyse_ia']['modele'] = self.modele_input.text()
+        self.config['analyse_ia']['temperature'] = self.temperature_spin.value()
+
+        self._log("✅ Configuration sauvegardée")
         self.statusBar().showMessage("Configuration sauvegardée", 3000)
+
+        QMessageBox.information(
+            self,
+            "Configuration sauvegardée",
+            "Les modifications seront appliquées au prochain lancement du workflow.\n\n"
+            "Note : Pour persister ces changements, modifiez config/default_config.yaml"
+        )
 
     def _charger_config(self):
         """Charge la configuration"""
