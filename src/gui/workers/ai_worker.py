@@ -1,3 +1,5 @@
+# FICHIER: src/gui/workers/ai_worker.py
+
 """
 Worker pour l'analyse IA dans un thread séparé
 """
@@ -13,26 +15,28 @@ class AIWorker(QThread):
     finished = pyqtSignal(list)  # liste de suggestions
     error = pyqtSignal(str)  # message d'erreur
 
-    def __init__(self, ai_analyzer, transcription, duree_cible=None, ton=None):
+    def __init__(self, analyzer, transcription, duree_cible=None, ton=None, nombre_suggestions=None):
         super().__init__()
-        self.ai_analyzer = ai_analyzer
+        self.analyzer = analyzer
         self.transcription = transcription
         self.duree_cible = duree_cible
         self.ton = ton
+        self.nombre_suggestions = nombre_suggestions  # ← AJOUTER ce paramètre
 
     def run(self):
         """Exécute l'analyse IA"""
         try:
-            self.progress.emit(0, "🤖 Analyse de la transcription avec Claude...")
+            self.progress.emit(0, "🤖 Analyse en cours avec Claude...")
 
-            # Analyser
-            suggestions = self.ai_analyzer.analyser_transcription(
+            # Analyser la transcription
+            suggestions = self.analyzer.analyser_transcription(
                 self.transcription,
                 duree_cible=self.duree_cible,
-                ton=self.ton
+                ton=self.ton,
+                nombre_suggestions=self.nombre_suggestions  # ← PASSER le paramètre
             )
 
-            self.progress.emit(100, f"✅ Analyse terminée : {len(suggestions)} suggestions générées")
+            self.progress.emit(100, "✅ Analyse IA terminée")
             self.finished.emit(suggestions)
 
         except Exception as e:

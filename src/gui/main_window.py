@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QProgressBar, QCheckBox, QGroupBox, QMessageBox,
     QComboBox, QDoubleSpinBox
 )
+from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 from pathlib import Path
 import yaml
@@ -113,7 +114,6 @@ class MainWindow(QMainWindow):
         # Ton souhaité
         ton_layout = QHBoxLayout()
         ton_layout.addWidget(QLabel("Ton souhaité :"))
-        self.ton_input = QLineEdit("informatif et dynamique")
         self.ton_combo = QComboBox()
         self.ton_combo.addItems([
             "informatif et dynamique",  # ← Défaut
@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
             "créatif et narratif"
         ])
 
-        ton_layout.addWidget(self.ton_input)
+        ton_layout.addWidget(self.ton_combo)
         options_layout.addLayout(ton_layout)
 
         # Nombre de suggestions
@@ -475,6 +475,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur dossier de sortie",
                                  f"Impossible de créer le dossier : {e}")
             return
+
+        self._update_config_from_ui()
 
         self.btn_start.setEnabled(False)
         self._log("🚀 Démarrage du workflow automatique...")
@@ -944,6 +946,25 @@ class MainWindow(QMainWindow):
                 config['elements_sonores']['activer'] = False
 
         return config
+
+    def _update_config_from_ui(self):
+        """Met à jour la config avec les valeurs de l'interface avant le workflow"""
+        # Format d'export et qualité
+        self.config['audio']['format_export'] = self.format_combo.currentText()
+        self.config['audio']['debit'] = self.qualite_combo.currentText()
+        self.config['audio']['normaliser'] = self.normalize_check.isChecked()
+
+        # Nombre de suggestions IA
+        if hasattr(self, 'suggestions_spin'):
+            self.config['analyse_ia']['nombre_suggestions'] = self.suggestions_spin.value()
+
+        # Ton (si modifié dans l'onglet config)
+        self.config['analyse_ia']['ton'] = self.ton_combo.currentText()
+
+        self._log(f"⚙️  Configuration appliquée : {self.format_combo.currentText().upper()}")
+        if self.format_combo.currentText() == 'mp3':
+            self._log(f"   Qualité : {self.qualite_combo.currentText()}")
+        self._log(f"   Normalisation : {'OUI' if self.normalize_check.isChecked() else 'NON'}")
 
     def _log(self, message):
         """Affiche un message dans la console"""
