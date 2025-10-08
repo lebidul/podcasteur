@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QTabWidget, QLabel, QPushButton, QFileDialog,
     QListWidget, QSpinBox, QLineEdit, QTextEdit,
     QProgressBar, QCheckBox, QGroupBox, QMessageBox,
-    QComboBox, QDoubleSpinBox
+    QComboBox, QDoubleSpinBox, QApplication
 )
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
         self.fichier_mix = None
         self.transcription = None
         self.suggestions = None
+        self.dark_mode = True  # Thème sombre par défaut
 
         self.init_ui()
 
@@ -47,6 +48,8 @@ class MainWindow(QMainWindow):
         if icon_path and icon_path.exists():
             from PyQt6.QtGui import QIcon
             self.setWindowIcon(QIcon(str(icon_path)))
+
+        self._apply_theme(self.dark_mode)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -263,6 +266,35 @@ class MainWindow(QMainWindow):
         """Crée l'onglet configuration"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
+
+        # === SECTION APPARENCE ===
+        apparence_group = QGroupBox("Apparence")
+        apparence_layout = QVBoxLayout()
+
+        theme_layout = QHBoxLayout()
+        theme_layout.addWidget(QLabel("Thème de l'interface :"))
+
+        self.theme_toggle = QPushButton("🌙 Mode sombre")
+        self.theme_toggle.setCheckable(True)
+        self.theme_toggle.setChecked(self.dark_mode)
+        self.theme_toggle.clicked.connect(self._toggle_theme)
+        self.theme_toggle.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                font-weight: bold;
+                border-radius: 4px;
+            }
+            QPushButton:checked {
+                background-color: #4a90e2;
+                color: white;
+            }
+        """)
+        theme_layout.addWidget(self.theme_toggle)
+        theme_layout.addStretch()
+
+        apparence_layout.addLayout(theme_layout)
+        apparence_group.setLayout(apparence_layout)
+        layout.addWidget(apparence_group)
 
         # === SECTION AUDIO ===
         audio_group = QGroupBox("Paramètres audio")
@@ -969,6 +1001,380 @@ class MainWindow(QMainWindow):
     def _log(self, message):
         """Affiche un message dans la console"""
         self.console.append(message)
+
+    def _toggle_theme(self, checked):
+        """Bascule entre thème sombre et clair"""
+        self.dark_mode = checked
+        self._apply_theme(self.dark_mode)
+
+        # Mettre à jour le texte du bouton
+        if self.dark_mode:
+            self.theme_toggle.setText("🌙 Mode sombre")
+        else:
+            self.theme_toggle.setText("☀️ Mode clair")
+
+        self.statusBar().showMessage(
+            f"Thème {'sombre' if self.dark_mode else 'clair'} activé",
+            2000
+        )
+
+    def _apply_theme(self, dark_mode):
+        """Applique le thème sombre ou clair à l'application"""
+        app = QApplication.instance()
+
+        if dark_mode:
+            # Thème SOMBRE (moderne)
+            dark_stylesheet = """
+                QMainWindow, QWidget {
+                    background-color: #1e1e1e;
+                    color: #e0e0e0;
+                }
+
+                QGroupBox {
+                    border: 2px solid #3a3a3a;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    font-weight: bold;
+                    color: #ffffff;
+                }
+
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+
+                QLabel {
+                    color: #e0e0e0;
+                }
+
+                QPushButton {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    min-height: 24px;
+                }
+
+                QPushButton:hover {
+                    background-color: #3a3a3a;
+                    border: 1px solid #4a90e2;
+                }
+
+                QPushButton:pressed {
+                    background-color: #252525;
+                }
+
+                QPushButton:disabled {
+                    background-color: #1a1a1a;
+                    color: #666666;
+                }
+
+                QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    min-height: 24px;
+                }
+
+                QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+                    border: 1px solid #4a90e2;
+                }
+
+                QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
+                    background-color: #1a1a1a;
+                    color: #666666;
+                }
+
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 6px solid #ffffff;
+                    margin-right: 6px;
+                }
+
+                QComboBox QAbstractItemView {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    selection-background-color: #4a90e2;
+                    border: 1px solid #3a3a3a;
+                }
+
+                QTextEdit {
+                    background-color: #252525;
+                    color: #e0e0e0;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 10pt;
+                }
+
+                QListWidget {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                }
+
+                QListWidget::item:selected {
+                    background-color: #4a90e2;
+                }
+
+                QProgressBar {
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    background-color: #2d2d2d;
+                    text-align: center;
+                    color: #ffffff;
+                    min-height: 20px;
+                }
+
+                QProgressBar::chunk {
+                    background-color: #4a90e2;
+                    border-radius: 3px;
+                }
+
+                QCheckBox {
+                    color: #e0e0e0;
+                    spacing: 8px;
+                }
+
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #3a3a3a;
+                    border-radius: 3px;
+                    background-color: #2d2d2d;
+                }
+
+                QCheckBox::indicator:checked {
+                    background-color: #4a90e2;
+                    border-color: #4a90e2;
+                }
+
+                QCheckBox::indicator:checked:after {
+                    content: "✓";
+                    color: white;
+                    font-weight: bold;
+                }
+
+                QTabWidget::pane {
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    background-color: #1e1e1e;
+                }
+
+                QTabBar::tab {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+
+                QTabBar::tab:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QTabBar::tab:hover:!selected {
+                    background-color: #3a3a3a;
+                }
+
+                QStatusBar {
+                    background-color: #252525;
+                    color: #e0e0e0;
+                    border-top: 1px solid #3a3a3a;
+                }
+            """
+            app.setStyleSheet(dark_stylesheet)
+
+        else:
+            # Thème CLAIR (moderne)
+            light_stylesheet = """
+                QMainWindow, QWidget {
+                    background-color: #f5f5f5;
+                    color: #212121;
+                }
+
+                QGroupBox {
+                    border: 2px solid #d0d0d0;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    font-weight: bold;
+                    color: #212121;
+                }
+
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+
+                QLabel {
+                    color: #212121;
+                }
+
+                QPushButton {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    min-height: 24px;
+                }
+
+                QPushButton:hover {
+                    background-color: #e8e8e8;
+                    border: 1px solid #4a90e2;
+                }
+
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+
+                QPushButton:disabled {
+                    background-color: #f0f0f0;
+                    color: #a0a0a0;
+                }
+
+                QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    min-height: 24px;
+                }
+
+                QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+                    border: 1px solid #4a90e2;
+                }
+
+                QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
+                    background-color: #f0f0f0;
+                    color: #a0a0a0;
+                }
+
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 6px solid #212121;
+                    margin-right: 6px;
+                }
+
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    color: #212121;
+                    selection-background-color: #4a90e2;
+                    selection-color: #ffffff;
+                    border: 1px solid #d0d0d0;
+                }
+
+                QTextEdit {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 10pt;
+                }
+
+                QListWidget {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                }
+
+                QListWidget::item:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QProgressBar {
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    background-color: #ffffff;
+                    text-align: center;
+                    color: #212121;
+                    min-height: 20px;
+                }
+
+                QProgressBar::chunk {
+                    background-color: #4a90e2;
+                    border-radius: 3px;
+                }
+
+                QCheckBox {
+                    color: #212121;
+                    spacing: 8px;
+                }
+
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #d0d0d0;
+                    border-radius: 3px;
+                    background-color: #ffffff;
+                }
+
+                QCheckBox::indicator:checked {
+                    background-color: #4a90e2;
+                    border-color: #4a90e2;
+                }
+
+                QTabWidget::pane {
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    background-color: #f5f5f5;
+                }
+
+                QTabBar::tab {
+                    background-color: #ffffff;
+                    color: #212121;
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+
+                QTabBar::tab:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QTabBar::tab:hover:!selected {
+                    background-color: #e8e8e8;
+                }
+
+                QStatusBar {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border-top: 1px solid #d0d0d0;
+                }
+            """
+            app.setStyleSheet(light_stylesheet)
 
     def _update_status(self):
         """Met à jour la barre de statut"""
