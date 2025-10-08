@@ -353,20 +353,62 @@ class MainWindow(QMainWindow):
         self._log(f"📄 Fichier : {chemin_trans.name}")
 
         try:
+            import re
+
             with open(chemin_trans, 'r', encoding='utf-8') as f:
                 if chemin_trans.suffix == '.json':
                     import json
                     self.transcription = json.load(f)
                 else:
-                    # Format texte simple
-                    texte = f.read()
+                    # Format texte avec timestamps : [MM:SS - MM:SS] texte
+                    contenu = f.read()
+
+                    # Parser le format timestamps
+                    segments = []
+                    texte_complet = []
+
+                    # Regex pour capturer [MM:SS - MM:SS] [SPEAKER] texte
+                    pattern = r'\[(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\]\s*(?:\[([^\]]+)\]\s*)?(.*)'
+
+                    for ligne in contenu.strip().split('\n'):
+                        match = re.match(pattern, ligne)
+                        if match:
+                            debut_min, debut_sec, fin_min, fin_sec, speaker, texte = match.groups()
+
+                            debut = int(debut_min) * 60 + int(debut_sec)
+                            fin = int(fin_min) * 60 + int(fin_sec)
+                            texte = texte.strip()
+
+                            segment = {
+                                'debut': float(debut),
+                                'fin': float(fin),
+                                'texte': texte
+                            }
+
+                            # Ajouter speaker si présent
+                            if speaker:
+                                segment['speaker'] = speaker
+
+                            segments.append(segment)
+                            texte_complet.append(texte)
+
                     self.transcription = {
-                        'texte': texte,
+                        'texte': ' '.join(texte_complet),
                         'langue': 'fr',
-                        'segments': []
+                        'segments': segments
                     }
 
-            self._log("✅ Transcription chargée")
+            # Vérification
+            nb_segments = len(self.transcription.get('segments', []))
+            nb_chars = len(self.transcription.get('texte', ''))
+
+            self._log(f"✅ Transcription chargée")
+            self._log(f"   📊 {nb_segments} segments")
+            self._log(f"   📝 {nb_chars} caractères")
+
+            if nb_segments == 0:
+                raise ValueError("Aucun segment trouvé dans la transcription")
+
             self._start_ai_analysis()
 
         except Exception as e:
@@ -375,27 +417,23 @@ class MainWindow(QMainWindow):
     def _start_transcription(self):
         """Démarre la transcription"""
 
-        # Dans main_window.py, méthode _start_transcription
-        def _start_transcription(self):
-            """Démarre la transcription"""
-
-            # Vérifier si on est dans un exe
-            if getattr(sys, 'frozen', False):
-                QMessageBox.warning(
-                    self,
-                    "Fonctionnalité non disponible",
-                    "La transcription n'est pas disponible dans la version exécutable.\n\n"
-                    "Veuillez :\n"
-                    "1. Utiliser un fichier transcription existant\n"
-                    "2. OU installer Python et lancer : python podcasteur_gui.py"
-                )
-                self.btn_start.setEnabled(True)
-                return
+        # Vérifier si on est dans un exe
+        if getattr(sys, 'frozen', False):
+            QMessageBox.warning(
+                self,
+                "Fonctionnalité non disponible",
+                "La transcription n'est pas disponible dans la version exécutable.\n\n"
+                "Veuillez :\n"
+                "1. Utiliser un fichier transcription existant\n"
+                "2. OU installer Python et lancer : python podcasteur_gui.py"
+            )
+            self.btn_start.setEnabled(True)
+            return
 
         from src.gui.workers.transcription_worker import TranscriptionWorker
         from ..transcriber import Transcriber
 
-        self._log("\n📍 ÉTAPE 2/4 : Transcription")
+        self._log("\n📝 ÉTAPE 2/4 : Transcription")
 
         transcriber = Transcriber(self.config)
 
@@ -421,6 +459,12 @@ class MainWindow(QMainWindow):
     def _on_transcription_finished(self, transcription):
         """Transcription terminée → lancer analyse IA"""
         self.transcription = transcription
+
+        print(f"🔍 DEBUG transcription reçue:")
+        print(f"   - Clés: {transcription.keys()}")
+        print(f"   - Texte: {len(transcription.get('texte', ''))} caractères")
+        print(f"   - Segments: {len(transcription.get('segments', []))} segments")
+
         self._start_ai_analysis()
 
     def _start_ai_analysis(self):
