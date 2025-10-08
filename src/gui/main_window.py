@@ -40,6 +40,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Podcasteur v1.4.0 - Éditeur de podcasts IA")
         self.setMinimumSize(1000, 700)
 
+        # Ajouter l'icône
+        icon_path = self._get_icon_path()
+        if icon_path and icon_path.exists():
+            from PyQt6.QtGui import QIcon
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
@@ -595,6 +601,18 @@ class MainWindow(QMainWindow):
         if file:
             line_edit.setText(file)
 
+    # Ajouter cette méthode helper dans la classe MainWindow
+    def _get_icon_path(self):
+        """Retourne le chemin de l'icône selon le contexte"""
+        if getattr(sys, 'frozen', False):
+            # Mode exécutable PyInstaller
+            base_path = Path(sys._MEIPASS)
+        else:
+            # Mode développement
+            base_path = Path(__file__).parent.parent.parent
+
+        return base_path / 'assets' / 'icon.ico'
+
     def _save_config(self):
         """Sauvegarde la configuration"""
         self.config['elements_sonores']['activer'] = self.enable_sounds_check.isChecked()
@@ -617,20 +635,53 @@ class MainWindow(QMainWindow):
 
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f)
-
-        # Configuration par défaut si fichier absent
-        return {
-            'elements_sonores': {
-                'activer': False,
-                'generique_debut': {'fichier': 'assets/intro.wav'},
-                'generique_fin': {'fichier': 'assets/outro.wav'}
-            },
-            'tri_fichiers': {
-                'methode': 'alphabetique',
-                'ordre': 'croissant'
+                config = yaml.safe_load(f)
+        else:
+            # Configuration par défaut
+            config = {
+                'elements_sonores': {
+                    'activer': False,
+                    'generique_debut': {'fichier': 'assets/intro.wav', 'volume': 0.8},
+                    'generique_fin': {'fichier': 'assets/outro.wav', 'volume': 0.8}
+                },
+                'tri_fichiers': {
+                    'methode': 'alphabetique',
+                    'ordre': 'croissant'
+                },
+                'audio': {
+                    'duree_fondu': 1000,
+                    'silence_entre_segments': 1000,
+                    'normaliser': True,
+                    'format_export': 'mp3',
+                    'debit': '192k'
+                }
             }
-        }
+
+        # Résoudre et vérifier TOUS les chemins relatifs dans elements_sonores
+        if 'elements_sonores' in config:
+            elements_ok = True
+
+            for key in ['generique_debut', 'generique_fin']:
+                if key in config['elements_sonores']:
+                    fichier = config['elements_sonores'][key].get('fichier', '')
+
+                    if fichier:
+                        chemin_fichier = Path(fichier)
+
+                        # Si chemin relatif, le résoudre depuis base_path
+                        if not chemin_fichier.is_absolute():
+                            chemin_absolu = base_path / fichier
+                            config['elements_sonores'][key]['fichier'] = str(chemin_absolu)
+
+                            # Vérifier l'existence
+                            if not chemin_absolu.exists():
+                                elements_ok = False
+
+            # Si un fichier manque, désactiver automatiquement les éléments sonores
+            if not elements_ok:
+                config['elements_sonores']['activer'] = False
+
+        return config
 
     def _log(self, message):
         """Affiche un message dans la console"""
