@@ -21,44 +21,55 @@ class AIAnalyzer:
         """
         self.config = config['analyse_ia']
         self.client = anthropic.Anthropic(api_key=cle_api)
-    
+
     def analyser_transcription(
-        self, 
-        transcription: dict,
-        duree_cible: Optional[int] = None,
-        ton: Optional[str] = None,
-        nombre_suggestions: Optional[int] = None
+            self,
+            transcription: dict,
+            duree_cible: Optional[int] = None,
+            ton: Optional[str] = None,
+            nombre_suggestions: Optional[int] = None,
+            prompt_personnalise: Optional[str] = None  # ← NOUVEAU
     ) -> List[Dict]:
         """
         Analyse la transcription et suggère des segments de montage
-        
+
         Args:
             transcription: Dictionnaire de transcription avec 'texte' et 'segments'
-            duree_cible: Durée cible en minutes (remplace la config)
-            ton: Ton souhaité (remplace la config)
-            nombre_suggestions: Nombre de suggestions (remplace la config)
-            
+            duree_cible: Durée cible en minutes (optionnel si prompt_personnalise)
+            ton: Ton souhaité (ignoré si prompt_personnalise)
+            nombre_suggestions: Nombre de suggestions
+            prompt_personnalise: Prompt personnalisé (mode expert)
+
         Returns:
             Liste de dictionnaires de suggestions
         """
-        # Utiliser les valeurs fournies ou celles de la config
-        duree_cible = duree_cible or self.config['duree_cible']
-        ton = ton or self.config['ton']
+        # Utiliser les valeurs par défaut si non fournies
         nombre_suggestions = nombre_suggestions or self.config['nombre_suggestions']
-        
+
         print(f"🤖 Analyse de la transcription avec Claude...")
-        print(f"   Durée cible : {duree_cible} minutes")
-        print(f"   Ton souhaité : {ton}")
-        print(f"   Suggestions à générer : {nombre_suggestions}")
-        
-        # Construire le prompt
-        prompt = self._construire_prompt(
-            transcription, 
-            duree_cible, 
-            ton, 
-            nombre_suggestions
-        )
-        
+
+        if prompt_personnalise:
+            print(f"   🎯 Mode personnalisé")
+            print(f"   Suggestions à générer : {nombre_suggestions}")
+            prompt = self._construire_prompt_personnalise(
+                transcription,
+                prompt_personnalise,
+                nombre_suggestions
+            )
+        else:
+            # Mode standard
+            duree_cible = duree_cible or self.config['duree_cible']
+            ton = ton or self.config['ton']
+            print(f"   Durée cible : {duree_cible} minutes")
+            print(f"   Ton souhaité : {ton}")
+            print(f"   Suggestions à générer : {nombre_suggestions}")
+            prompt = self._construire_prompt(
+                transcription,
+                duree_cible,
+                ton,
+                nombre_suggestions
+            )
+
         # Appeler l'API Claude
         reponse = self.client.messages.create(
             model=self.config['modele'],
@@ -69,12 +80,12 @@ class AIAnalyzer:
                 "content": prompt
             }]
         )
-        
+
         # Parser la réponse
         suggestions = self._parser_reponse(reponse.content[0].text)
-        
+
         print(f"✅ Analyse terminée : {len(suggestions)} suggestions générées")
-        
+
         return suggestions
     
     def _construire_prompt(
@@ -234,6 +245,62 @@ IMPORTANT: Ta réponse doit être au format JSON suivant (et UNIQUEMENT du JSON 
                 f"La transcription est peut-être trop longue ({len(texte_reponse)} caractères). "
                 f"Essayez de réduire le nombre de segments ou la durée cible."
             )
+
+    def _construire_prompt_personnalise(
+            self,
+            transcription: dict,
+            objectif: str,
+            nombre_suggestions: int
+    ) -> str:
+        """Construit le prompt personnalisé pour Claude"""
+
+        # Formater la transcription avec timestamps
+        transcription_formatee = self._formater_transcription_pour_prompt(transcription)
+
+        # Calculer statistiques
+        duree_totale_sec = transcription['segments'][-1]['fin'] if transcription['segments'] else 0
+        duree_totale_min = duree_totale_sec / 60
+
+        prompt = f"""Tu es un expert en montage de podcasts et en édition audio.
+
+    📊 INFORMATIONS SUR L'AUDIO:
+    - Durée totale: {duree_totale_min:.1f} minutes ({duree_totale_sec:.0f} secondes)
+    - Nombre de segments: {len(transcription['segments'])}
+
+    📝 TRANSCRIPTION COMPLÈTE AVEC TIMESTAMPS:
+    {transcription_formatee}
+
+    🎯 OBJECTIF DE L'ANALYSE:
+    {objectif}
+
+    ⚠️ RÈGLES CRITIQUES:
+    1. **SPÉCIFICITÉ OBLIGATOIRE**: Chaque segment DOIT citer des PASSAGES PRÉCIS de la transcription
+    2. **CONTEXTE RÉEL**: Utilise les VRAIS contenus, phrases, et moments de la transcription ci-dessus
+    3. **JUSTIFICATION CONCRÈTE**: Explique POURQUOI chaque segment est gardé ou rejeté (avec citation)
+    4. **TIMESTAMPS PRÉCIS**: Utilise les timestamps exacts de la transcription
+
+    📋 FORMAT DE RÉPONSE (JSON uniquement):
+
+    {{
+      "suggestions": [
+        {{
+          "titre": "Titre descriptif de cette suggestion",
+          "commentaire": "Explication détaillée : stratégie appliquée, critères utilisés, résultat attendu",
+          "duree_estimee": durée_en_minutes,
+          "segments": [
+            {{
+              "debut": temps_debut_en_secondes,
+              "fin": temps_fin_en_secondes,
+              "description": "Description SPÉCIFIQUE avec CITATION d'une phrase exacte et justification du choix"
+            }}
+          ]
+        }}
+      ]
+    }}
+
+    🚀 Génère maintenant {nombre_suggestions} suggestions différentes en respectant l'objectif ci-dessus."""
+
+        return prompt
 
     @staticmethod
     def _formater_temps(secondes: float) -> str:

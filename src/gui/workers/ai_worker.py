@@ -15,13 +15,15 @@ class AIWorker(QThread):
     finished = pyqtSignal(list)  # liste de suggestions
     error = pyqtSignal(str)  # message d'erreur
 
-    def __init__(self, analyzer, transcription, duree_cible=None, ton=None, nombre_suggestions=None):
+    def __init__(self, analyzer, transcription, duree_cible=None, ton=None,
+                 nombre_suggestions=None, prompt_personnalise=None):
         super().__init__()
         self.analyzer = analyzer
         self.transcription = transcription
         self.duree_cible = duree_cible
         self.ton = ton
-        self.nombre_suggestions = nombre_suggestions  # ← AJOUTER ce paramètre
+        self.nombre_suggestions = nombre_suggestions
+        self.prompt_personnalise = prompt_personnalise
 
     def run(self):
         """Exécute l'analyse IA"""
@@ -33,7 +35,8 @@ class AIWorker(QThread):
                 self.transcription,
                 duree_cible=self.duree_cible,
                 ton=self.ton,
-                nombre_suggestions=self.nombre_suggestions  # ← PASSER le paramètre
+                nombre_suggestions=self.nombre_suggestions,
+                prompt_personnalise=self.prompt_personnalise  # ← PASSER
             )
 
             self.progress.emit(100, "✅ Analyse IA terminée")

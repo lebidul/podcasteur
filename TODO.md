@@ -40,3 +40,4 @@
 - [ ] Bouton mode débug (avec fichier .log)
 - [ ] Exporter multiples suggestions
 - [ ] Exporter fichier suggestions et être capable d'en réutiliser un
+- [ ] Possibilité de partir d'un prompt personnalisé. Exemple "remonter en enlevant séquences inutilisables" 

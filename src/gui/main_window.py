@@ -128,6 +128,67 @@ class MainWindow(QMainWindow):
         ton_layout.addWidget(self.ton_combo)
         options_layout.addLayout(ton_layout)
 
+        # Prompt personnalisé
+        prompt_group = QGroupBox("Prompt personnalisé (Mode expert)")
+        prompt_layout = QVBoxLayout()
+
+        self.prompt_mode_check = QCheckBox("Utiliser un prompt personnalisé")
+        self.prompt_mode_check.stateChanged.connect(self._toggle_prompt_mode)
+        self.prompt_mode_check.setToolTip(
+            "Permet de définir votre propre objectif d'analyse.\n"
+            "Ex: Nettoyer les séquences, extraire un thème, etc."
+        )
+        prompt_layout.addWidget(self.prompt_mode_check)
+
+        # Zone de texte pour le prompt
+        self.prompt_custom = QTextEdit()
+        self.prompt_custom.setPlaceholderText(
+            "Décrivez votre objectif d'analyse...\n\n"
+            "Exemples :\n"
+            "• Enlève toutes les séquences avec des problèmes audio\n"
+            "• Extrais uniquement les passages sur [thème]\n"
+            "• Garde les moments qui racontent une histoire"
+        )
+        self.prompt_custom.setMaximumHeight(80)
+        self.prompt_custom.setEnabled(False)
+        prompt_layout.addWidget(self.prompt_custom)
+
+        # Presets
+        preset_layout = QHBoxLayout()
+        preset_layout.addWidget(QLabel("Presets :"))
+
+        btn_clean = QPushButton("🧹 Nettoyage")
+        btn_clean.setToolTip("Enlève les séquences inutilisables (audio, hésitations, silences)")
+        btn_clean.clicked.connect(lambda: self._apply_preset_clean())
+        btn_clean.setEnabled(False)
+        self.btn_preset_clean = btn_clean
+
+        btn_theme = QPushButton("🎯 Thématique")
+        btn_theme.setToolTip("Extrais uniquement un thème spécifique")
+        btn_theme.clicked.connect(lambda: self._apply_preset_theme())
+        btn_theme.setEnabled(False)
+        self.btn_preset_theme = btn_theme
+
+        btn_story = QPushButton("📖 Storytelling")
+        btn_story.setToolTip("Construis une narration cohérente avec début, développement, fin")
+        btn_story.clicked.connect(lambda: self._apply_preset_story())
+        btn_story.setEnabled(False)
+        self.btn_preset_story = btn_story
+
+        preset_layout.addWidget(btn_clean)
+        preset_layout.addWidget(btn_theme)
+        preset_layout.addWidget(btn_story)
+        preset_layout.addStretch()
+        prompt_layout.addLayout(preset_layout)
+
+        # Note sur durée cible
+        note_label = QLabel("💡 En mode personnalisé, la durée cible devient optionnelle")
+        note_label.setStyleSheet("color: #666; font-style: italic; font-size: 10pt;")
+        prompt_layout.addWidget(note_label)
+
+        prompt_group.setLayout(prompt_layout)
+        options_layout.addWidget(prompt_group)
+
         # Nombre de suggestions
         suggestions_layout = QHBoxLayout()
         suggestions_layout.addWidget(QLabel("Nombre de suggestions :"))
@@ -748,12 +809,29 @@ class MainWindow(QMainWindow):
         cle_api = os.getenv('ANTHROPIC_API_KEY')
         analyzer = AIAnalyzer(self.config, cle_api)
 
+        # Récupérer le prompt personnalisé si activé
+        prompt_personnalise = None
+        if self.prompt_mode_check.isChecked():
+            prompt_personnalise = self.prompt_custom.toPlainText().strip()
+            if not prompt_personnalise:
+                QMessageBox.warning(
+                    self,
+                    "Prompt vide",
+                    "Veuillez saisir un prompt personnalisé ou désactiver cette option."
+                )
+                self.btn_start.setEnabled(True)
+                return
+
+            self._log("   🎯 Mode personnalisé activé")
+            self._log(f"   Prompt : {prompt_personnalise[:100]}...")
+
         self.ai_worker = AIWorker(
             analyzer,
             self.transcription,
-            duree_cible=self.duree_spin.value(),
-            ton=self.ton_combo.currentText(),
-            nombre_suggestions=self.suggestions_spin.value()  # ← AJOUTER
+            duree_cible=self.duree_spin.value() if not self.prompt_mode_check.isChecked() else None,
+            ton=self.ton_combo.currentText() if not self.prompt_mode_check.isChecked() else None,
+            nombre_suggestions=self.suggestions_spin.value(),
+            prompt_personnalise=prompt_personnalise  # ← NOUVEAU
         )
 
         self.ai_worker.progress.connect(self._update_progress)
@@ -1457,3 +1535,98 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Aucun fichier sélectionné")
         else:
             self.statusBar().showMessage(f"{count} fichier(s) sélectionné(s)")
+
+
+    def _toggle_prompt_mode(self, state):
+        """Active/désactive le mode prompt personnalisé"""
+        is_custom = state == Qt.CheckState.Checked.value
+
+        # Activer/désactiver les contrôles
+        self.prompt_custom.setEnabled(is_custom)
+        self.btn_preset_clean.setEnabled(is_custom)
+        self.btn_preset_theme.setEnabled(is_custom)
+        self.btn_preset_story.setEnabled(is_custom)
+
+        # Désactiver les contrôles standards si mode custom
+        self.ton_combo.setEnabled(not is_custom)
+        self.duree_spin.setEnabled(not is_custom)  # Optionnel en mode custom
+
+        if is_custom:
+            self.statusBar().showMessage("Mode expert activé - Prompt personnalisé", 3000)
+        else:
+            self.statusBar().showMessage("Mode standard activé", 3000)
+
+
+    def _apply_preset_clean(self):
+        """Applique le preset Nettoyage"""
+        prompt = """Analyse cette transcription et identifie toutes les séquences inutilisables ou problématiques :
+    
+    CRITÈRES D'EXCLUSION :
+    - Problèmes audio (saturation, bruits parasites, inaudible)
+    - Hésitations excessives ("euh", "ben", "voilà" répétés)
+    - Silences longs (> 3 secondes)
+    - Répétitions ou bégaiements
+    - Faux départs ou phrases inachevées
+    - Contenu hors-sujet ou confus
+    
+    OBJECTIF :
+    Génère des suggestions qui ne gardent QUE les séquences claires, fluides et utilisables.
+    Pas de contrainte de durée - privilégie la qualité.
+    
+    Pour chaque suggestion, indique clairement pourquoi certaines parties sont exclues."""
+
+        self.prompt_custom.setPlainText(prompt)
+        self.statusBar().showMessage("Preset 'Nettoyage' appliqué", 2000)
+
+
+    def _apply_preset_theme(self):
+        """Applique le preset Thématique"""
+        prompt = """Analyse cette transcription pour extraire UN thème principal.
+    
+    INSTRUCTIONS :
+    1. Identifie d'abord les 3-5 thèmes majeurs abordés dans la transcription
+    2. Pour chaque thème, extrais TOUS les passages qui en parlent (même brièvement)
+    3. Génère plusieurs suggestions, une par thème majeur
+    
+    RÈGLES :
+    - Garde UNIQUEMENT les passages sur le thème choisi
+    - Ignore complètement tout ce qui n'est pas directement lié
+    - Conserve la chronologie des passages sur ce thème
+    - Indique clairement quel thème tu as extrait
+    
+    EXEMPLE de thèmes possibles :
+    - Technique/méthode spécifique
+    - Anecdote ou histoire personnelle
+    - Conseils pratiques
+    - Débat ou controverse
+    - Témoignage
+    
+    [IMPORTANT : Remplace ce texte par le thème spécifique que tu veux extraire]"""
+
+        self.prompt_custom.setPlainText(prompt)
+        self.statusBar().showMessage("Preset 'Thématique' appliqué - Personnalisez le thème", 3000)
+
+
+    def _apply_preset_story(self):
+        """Applique le preset Storytelling"""
+        prompt = """Analyse cette transcription et construis une NARRATION cohérente avec une structure narrative claire.
+    
+    STRUCTURE NARRATIVE OBLIGATOIRE :
+    1. **Ouverture** (10-15%) : Accroche, contexte, présentation du sujet
+    2. **Développement** (60-70%) : Cœur du récit, progression logique, moments forts
+    3. **Climax** (10-15%) : Point culminant, révélation, moment clé
+    4. **Conclusion** (5-10%) : Résolution, message final, ouverture
+    
+    PRINCIPES DE STORYTELLING :
+    - Crée une progression émotionnelle (calme → tension → résolution)
+    - Garde les moments qui font avancer l'histoire
+    - Élimine les digressions et répétitions
+    - Conserve les transitions naturelles
+    - Privilégie les anecdotes, exemples concrets, moments humains
+    
+    OBJECTIF :
+    Génère 2-3 histoires différentes qu'on pourrait raconter avec ce contenu.
+    Chaque suggestion doit avoir un fil narratif clair et captivant."""
+
+        self.prompt_custom.setPlainText(prompt)
+        self.statusBar().showMessage("Preset 'Storytelling' appliqué", 2000)
