@@ -257,68 +257,67 @@ class AudioProcessor:
         return final, chemin_sortie_horodate
 
     def ajouter_elements_sonores(
-        self,
-        audio_principal: AudioSegment,
-        config_elements: dict
+            self,
+            audio_principal: AudioSegment,
+            config_elements: dict
     ) -> tuple[AudioSegment, float, float]:
         """
         Ajoute intro et/ou outro au podcast
-        
+
         Args:
             audio_principal: L'audio du podcast monté
             config_elements: Configuration des éléments sonores
-            
+
         Returns:
             Tuple (AudioSegment avec intro/outro, durée intro, durée outro)
         """
         resultat = audio_principal
         duree_intro = 0
         duree_outro = 0
-        
+
         # Ajouter l'intro
         generique_debut = config_elements.get('generique_debut', {})
         if generique_debut.get('fichier'):
             intro_path = Path(generique_debut['fichier'])
-            
+
             if intro_path.exists():
                 print(f"   🎵 Ajout de l'intro : {intro_path.name}")
                 intro = AudioSegment.from_file(intro_path)
-                
+
                 # Récupérer le fondu avec valeur par défaut
                 fondu_sortie = generique_debut.get('duree_fondu_sortie', 1000)
                 if fondu_sortie and fondu_sortie > 0:
                     intro = intro.fade_out(fondu_sortie)
-                
+
                 resultat = intro + resultat
                 duree_intro = len(intro) / 1000
                 print(f"   ✅ Intro ajoutée ({duree_intro:.1f}s)")
-            else:
-                print(f"   ⚠️  Intro non trouvée : {intro_path}")
-        
+            # ← SUPPRIMER le else avec le print warning
+
         # Ajouter l'outro
         generique_fin = config_elements.get('generique_fin', {})
         if generique_fin.get('fichier'):
             outro_path = Path(generique_fin['fichier'])
-            
+
             if outro_path.exists():
                 print(f"   🎵 Ajout de l'outro : {outro_path.name}")
                 outro = AudioSegment.from_file(outro_path)
-                
+
                 # Récupérer le fondu avec valeur par défaut
                 fondu_entree = generique_fin.get('duree_fondu_entree', 1000)
                 if fondu_entree and fondu_entree > 0:
                     outro = outro.fade_in(fondu_entree)
-                
+
                 resultat = resultat + outro
                 duree_outro = len(outro) / 1000
                 print(f"   ✅ Outro ajoutée ({duree_outro:.1f}s)")
-            else:
-                print(f"   ⚠️  Outro non trouvée : {outro_path}")
-        
-        duree_totale_elements = duree_intro + duree_outro
-        if duree_totale_elements > 0:
+            # ← SUPPRIMER le else avec le print warning
+
+        # Afficher message uniquement si des éléments ont été ajoutés
+        if duree_intro > 0 or duree_outro > 0:
+            duree_totale_elements = duree_intro + duree_outro
             print(f"   📊 Durée totale des éléments sonores : {duree_totale_elements:.1f}s")
-        
+
         return resultat, duree_intro, duree_outro
 
     def _generer_metadonnees(

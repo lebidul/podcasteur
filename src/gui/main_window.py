@@ -6,8 +6,10 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QLabel, QPushButton, QFileDialog,
     QListWidget, QSpinBox, QLineEdit, QTextEdit,
-    QProgressBar, QCheckBox, QGroupBox, QMessageBox
+    QProgressBar, QCheckBox, QGroupBox, QMessageBox,
+    QComboBox, QDoubleSpinBox, QApplication
 )
+from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 from pathlib import Path
 import yaml
@@ -32,6 +34,7 @@ class MainWindow(QMainWindow):
         self.fichier_mix = None
         self.transcription = None
         self.suggestions = None
+        self.dark_mode = False  # Thème clair par défaut
 
         self.init_ui()
 
@@ -39,6 +42,14 @@ class MainWindow(QMainWindow):
         """Initialise l'interface utilisateur"""
         self.setWindowTitle("Podcasteur v1.4.0 - Éditeur de podcasts IA")
         self.setMinimumSize(1000, 700)
+
+        # Ajouter l'icône
+        icon_path = self._get_icon_path()
+        if icon_path and icon_path.exists():
+            from PyQt6.QtGui import QIcon
+            self.setWindowIcon(QIcon(str(icon_path)))
+
+        self._apply_theme(self.dark_mode)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -106,9 +117,58 @@ class MainWindow(QMainWindow):
         # Ton souhaité
         ton_layout = QHBoxLayout()
         ton_layout.addWidget(QLabel("Ton souhaité :"))
-        self.ton_input = QLineEdit("informatif et dynamique")
-        ton_layout.addWidget(self.ton_input)
+        self.ton_combo = QComboBox()
+        self.ton_combo.addItems([
+            "informatif et dynamique",  # ← Défaut
+            "détendu et conversationnel",
+            "professionnel et concis",
+            "créatif et narratif"
+        ])
+
+        ton_layout.addWidget(self.ton_combo)
         options_layout.addLayout(ton_layout)
+
+        # Nombre de suggestions
+        suggestions_layout = QHBoxLayout()
+        suggestions_layout.addWidget(QLabel("Nombre de suggestions :"))
+        self.suggestions_spin = QSpinBox()
+        self.suggestions_spin.setMinimum(1)
+        self.suggestions_spin.setMaximum(5)
+        self.suggestions_spin.setValue(self.config.get('analyse_ia', {}).get('nombre_suggestions', 3))
+        suggestions_layout.addWidget(self.suggestions_spin)
+        suggestions_layout.addStretch()
+        options_layout.addLayout(suggestions_layout)
+
+        # Format d'export
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel("Format d'export :"))
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(['mp3', 'wav', 'flac'])
+        format_actuel = self.config.get('audio', {}).get('format_export', 'mp3')
+        self.format_combo.setCurrentText(format_actuel)
+        format_layout.addWidget(self.format_combo)
+        format_layout.addStretch()
+        options_layout.addLayout(format_layout)
+
+        # Qualité audio (seulement pour MP3)
+        qualite_layout = QHBoxLayout()
+        qualite_layout.addWidget(QLabel("Qualité audio (MP3) :"))
+        self.qualite_combo = QComboBox()
+        self.qualite_combo.addItems(['128k', '192k', '256k', '320k'])
+        debit_actuel = self.config.get('audio', {}).get('debit', '192k')
+        self.qualite_combo.setCurrentText(debit_actuel)
+        qualite_layout.addWidget(self.qualite_combo)
+        qualite_layout.addStretch()
+        options_layout.addLayout(qualite_layout)
+
+        # Connecter le changement de format pour activer/désactiver qualité
+        self.format_combo.currentTextChanged.connect(self._on_format_changed)
+        self._on_format_changed(self.format_combo.currentText())  # Init
+
+        # Normalisation audio
+        self.normalize_check = QCheckBox("Normaliser l'audio")
+        self.normalize_check.setChecked(self.config.get('audio', {}).get('normaliser', True))
+        options_layout.addWidget(self.normalize_check)
 
         # Checkbox speakers
         self.detect_speakers_check = QCheckBox("Détecter les speakers (nécessite token HF)")
@@ -153,7 +213,8 @@ class MainWindow(QMainWindow):
         # Dossier de sortie
         sortie_layout = QHBoxLayout()
         sortie_layout.addWidget(QLabel("Dossier de sortie :"))
-        self.sortie_input = QLineEdit("output")
+        self.sortie_input = QLineEdit()
+        self.sortie_input.setPlaceholderText("Sélectionnez un dossier de sortie...")
         sortie_layout.addWidget(self.sortie_input, 1)
         btn_browse_sortie = QPushButton("Parcourir")
         btn_browse_sortie.clicked.connect(self._browse_sortie_folder)
@@ -206,6 +267,67 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
+        # === SECTION APPARENCE ===
+        apparence_group = QGroupBox("Apparence")
+        apparence_layout = QVBoxLayout()
+
+        theme_layout = QHBoxLayout()
+        theme_layout.addWidget(QLabel("Thème de l'interface :"))
+
+        self.theme_toggle = QPushButton("☀️ Mode clair")
+        self.theme_toggle.setCheckable(True)
+        self.theme_toggle.setChecked(self.dark_mode)
+        self.theme_toggle.clicked.connect(self._toggle_theme)
+        self.theme_toggle.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                font-weight: bold;
+                border-radius: 4px;
+            }
+            QPushButton:checked {
+                background-color: #4a90e2;
+                color: white;
+            }
+        """)
+        theme_layout.addWidget(self.theme_toggle)
+        theme_layout.addStretch()
+
+        apparence_layout.addLayout(theme_layout)
+        apparence_group.setLayout(apparence_layout)
+        layout.addWidget(apparence_group)
+
+        # === SECTION AUDIO ===
+        audio_group = QGroupBox("Paramètres audio")
+        audio_layout = QVBoxLayout()
+
+        # Durée des fondus
+        fondu_layout = QHBoxLayout()
+        fondu_layout.addWidget(QLabel("Durée des fondus (ms) :"))
+        self.fondu_spin = QSpinBox()
+        self.fondu_spin.setMinimum(0)
+        self.fondu_spin.setMaximum(5000)
+        self.fondu_spin.setSingleStep(100)
+        self.fondu_spin.setValue(self.config.get('audio', {}).get('duree_fondu', 1000))
+        fondu_layout.addWidget(self.fondu_spin)
+        fondu_layout.addStretch()
+        audio_layout.addLayout(fondu_layout)
+
+        # Silence entre segments
+        silence_layout = QHBoxLayout()
+        silence_layout.addWidget(QLabel("Silence entre segments (ms) :"))
+        self.silence_spin = QSpinBox()
+        self.silence_spin.setMinimum(0)
+        self.silence_spin.setMaximum(5000)
+        self.silence_spin.setSingleStep(100)
+        self.silence_spin.setValue(self.config.get('audio', {}).get('silence_entre_segments', 1000))
+        silence_layout.addWidget(self.silence_spin)
+        silence_layout.addStretch()
+        audio_layout.addLayout(silence_layout)
+
+        audio_group.setLayout(audio_layout)
+        layout.addWidget(audio_group)
+
+        # === SECTION ÉLÉMENTS SONORES ===
         sound_group = QGroupBox("Éléments sonores")
         sound_layout = QVBoxLayout()
 
@@ -213,36 +335,137 @@ class MainWindow(QMainWindow):
         self.enable_sounds_check.setChecked(
             self.config.get('elements_sonores', {}).get('activer', False)
         )
+        sound_layout.addWidget(self.enable_sounds_check)
 
+        # Intro
         intro_layout = QHBoxLayout()
         intro_layout.addWidget(QLabel("Intro :"))
         self.intro_input = QLineEdit(
-            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('fichier', 'assets/intro.mp3')
+            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('fichier', 'assets/intro.wav')
         )
         btn_intro = QPushButton("Parcourir")
         btn_intro.clicked.connect(lambda: self._browse_file(self.intro_input))
         intro_layout.addWidget(self.intro_input)
         intro_layout.addWidget(btn_intro)
+        sound_layout.addLayout(intro_layout)
 
+        # Volume intro
+        intro_vol_layout = QHBoxLayout()
+        intro_vol_layout.addWidget(QLabel("Volume intro (0.0 - 1.0) :"))
+        self.intro_volume_spin = QDoubleSpinBox()
+        self.intro_volume_spin.setMinimum(0.0)
+        self.intro_volume_spin.setMaximum(1.0)
+        self.intro_volume_spin.setSingleStep(0.1)
+        self.intro_volume_spin.setValue(
+            self.config.get('elements_sonores', {}).get('generique_debut', {}).get('volume', 0.8)
+        )
+        intro_vol_layout.addWidget(self.intro_volume_spin)
+        intro_vol_layout.addStretch()
+        sound_layout.addLayout(intro_vol_layout)
+
+        # Outro
         outro_layout = QHBoxLayout()
         outro_layout.addWidget(QLabel("Outro :"))
         self.outro_input = QLineEdit(
-            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('fichier', 'assets/outro.mp3')
+            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('fichier', 'assets/outro.wav')
         )
         btn_outro = QPushButton("Parcourir")
         btn_outro.clicked.connect(lambda: self._browse_file(self.outro_input))
         outro_layout.addWidget(self.outro_input)
         outro_layout.addWidget(btn_outro)
-
-        sound_layout.addWidget(self.enable_sounds_check)
-        sound_layout.addLayout(intro_layout)
         sound_layout.addLayout(outro_layout)
+
+        # Volume outro
+        outro_vol_layout = QHBoxLayout()
+        outro_vol_layout.addWidget(QLabel("Volume outro (0.0 - 1.0) :"))
+        self.outro_volume_spin = QDoubleSpinBox()
+        self.outro_volume_spin.setMinimum(0.0)
+        self.outro_volume_spin.setMaximum(1.0)
+        self.outro_volume_spin.setSingleStep(0.1)
+        self.outro_volume_spin.setValue(
+            self.config.get('elements_sonores', {}).get('generique_fin', {}).get('volume', 0.8)
+        )
+        outro_vol_layout.addWidget(self.outro_volume_spin)
+        outro_vol_layout.addStretch()
+        sound_layout.addLayout(outro_vol_layout)
+
         sound_group.setLayout(sound_layout)
         layout.addWidget(sound_group)
 
-        btn_save = QPushButton("Sauvegarder la configuration")
+        # === SECTION TRI FICHIERS ===
+        tri_group = QGroupBox("Tri des fichiers audio")
+        tri_layout = QVBoxLayout()
+
+        # Méthode de tri
+        methode_layout = QHBoxLayout()
+        methode_layout.addWidget(QLabel("Méthode de tri :"))
+        self.tri_methode_combo = QComboBox()
+        self.tri_methode_combo.addItems(['alphabetique', 'date'])
+        methode_actuelle = self.config.get('tri_fichiers', {}).get('methode', 'alphabetique')
+        # Mapper "nom" -> "alphabetique" pour compatibilité
+        if methode_actuelle == 'nom':
+            methode_actuelle = 'alphabetique'
+        self.tri_methode_combo.setCurrentText(methode_actuelle)
+        methode_layout.addWidget(self.tri_methode_combo)
+        methode_layout.addStretch()
+        tri_layout.addLayout(methode_layout)
+
+        # Ordre de tri
+        ordre_layout = QHBoxLayout()
+        ordre_layout.addWidget(QLabel("Ordre de tri :"))
+        self.tri_ordre_combo = QComboBox()
+        self.tri_ordre_combo.addItems(['croissant', 'decroissant'])
+        ordre_actuel = self.config.get('tri_fichiers', {}).get('ordre', 'croissant')
+        # Mapper "asc"/"desc" pour compatibilité
+        if ordre_actuel == 'asc':
+            ordre_actuel = 'croissant'
+        elif ordre_actuel == 'desc':
+            ordre_actuel = 'decroissant'
+        self.tri_ordre_combo.setCurrentText(ordre_actuel)
+        ordre_layout.addWidget(self.tri_ordre_combo)
+        ordre_layout.addStretch()
+        tri_layout.addLayout(ordre_layout)
+
+        tri_group.setLayout(tri_layout)
+        layout.addWidget(tri_group)
+
+        # === SECTION IA ===
+        ia_group = QGroupBox("Paramètres d'analyse IA")
+        ia_layout = QVBoxLayout()
+
+        # Modèle Claude
+        modele_layout = QHBoxLayout()
+        modele_layout.addWidget(QLabel("Modèle Claude :"))
+        self.modele_input = QLineEdit(
+            self.config.get('analyse_ia', {}).get('modele', 'claude-sonnet-4-5-20250929')
+        )
+        self.modele_input.setPlaceholderText("claude-sonnet-4-5-20250929")
+        modele_layout.addWidget(self.modele_input)
+        ia_layout.addLayout(modele_layout)
+
+        # Température
+        temp_layout = QHBoxLayout()
+        temp_layout.addWidget(QLabel("Température (0.0 - 1.0) :"))
+        self.temperature_spin = QDoubleSpinBox()
+        self.temperature_spin.setMinimum(0.0)
+        self.temperature_spin.setMaximum(1.0)
+        self.temperature_spin.setSingleStep(0.1)
+        self.temperature_spin.setValue(
+            self.config.get('analyse_ia', {}).get('temperature', 0.7)
+        )
+        temp_layout.addWidget(self.temperature_spin)
+        temp_layout.addStretch()
+        ia_layout.addLayout(temp_layout)
+
+        ia_group.setLayout(ia_layout)
+        layout.addWidget(ia_group)
+
+        # Bouton sauvegarder
+        btn_save = QPushButton("💾 Sauvegarder la configuration")
+        btn_save.setStyleSheet("padding: 8px; font-weight: bold;")
         btn_save.clicked.connect(self._save_config)
         layout.addWidget(btn_save)
+
         layout.addStretch()
 
         return widget
@@ -270,6 +493,22 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Clé API manquante",
                                  "ANTHROPIC_API_KEY non définie dans .env")
             return
+
+        # Vérifier le dossier de sortie
+        if not self.sortie_input.text().strip():
+            QMessageBox.warning(self, "Dossier de sortie manquant",
+                                "Veuillez sélectionner un dossier de sortie.")
+            return
+
+        dossier_sortie = Path(self.sortie_input.text())
+        try:
+            dossier_sortie.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur dossier de sortie",
+                                 f"Impossible de créer le dossier : {e}")
+            return
+
+        self._update_config_from_ui()
 
         self.btn_start.setEnabled(False)
         self._log("🚀 Démarrage du workflow automatique...")
@@ -306,12 +545,19 @@ class MainWindow(QMainWindow):
         dossier_sortie.mkdir(parents=True, exist_ok=True)
         fichier_mix = dossier_sortie / "mix_complet.wav"
 
+        # Mapper les valeurs GUI vers les valeurs attendues par audio_processor
+        methode_map = {'alphabetique': 'nom', 'date': 'date'}
+        ordre_map = {'croissant': 'asc', 'decroissant': 'desc'}
+
+        methode = methode_map.get(self.config['tri_fichiers']['methode'], 'nom')
+        ordre = ordre_map.get(self.config['tri_fichiers']['ordre'], 'asc')
+
         self.concat_worker = ConcatWorker(
             processor,
             self.fichiers_audio,
             fichier_mix,
-            methode_tri=self.config['tri_fichiers']['methode'],
-            ordre_tri=self.config['tri_fichiers']['ordre']
+            methode_tri=methode,
+            ordre_tri=ordre
         )
 
         self.concat_worker.progress.connect(self._update_progress)
@@ -320,9 +566,18 @@ class MainWindow(QMainWindow):
         self.concat_worker.start()
 
     def _on_concat_finished(self, fichier_mix):
-        """Concaténation terminée → lancer transcription"""
+        """Concaténation terminée → lancer transcription ou charger existante"""
         self.fichier_mix = fichier_mix
-        self._start_transcription()
+
+        # Vérifier si l'utilisateur veut utiliser une transcription existante
+        mode_trans = self.use_transcription_check.isChecked() and bool(self.transcription_file_input.text())
+
+        if mode_trans:
+            # Charger la transcription existante
+            self._charger_transcription_existante()
+        else:
+            # Faire la transcription
+            self._start_transcription()
 
     def _charger_transcription_existante(self):
         """Charge une transcription depuis un fichier"""
@@ -332,20 +587,62 @@ class MainWindow(QMainWindow):
         self._log(f"📄 Fichier : {chemin_trans.name}")
 
         try:
+            import re
+
             with open(chemin_trans, 'r', encoding='utf-8') as f:
                 if chemin_trans.suffix == '.json':
                     import json
                     self.transcription = json.load(f)
                 else:
-                    # Format texte simple
-                    texte = f.read()
+                    # Format texte avec timestamps : [MM:SS - MM:SS] texte
+                    contenu = f.read()
+
+                    # Parser le format timestamps
+                    segments = []
+                    texte_complet = []
+
+                    # Regex pour capturer [MM:SS - MM:SS] [SPEAKER] texte
+                    pattern = r'\[(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\]\s*(?:\[([^\]]+)\]\s*)?(.*)'
+
+                    for ligne in contenu.strip().split('\n'):
+                        match = re.match(pattern, ligne)
+                        if match:
+                            debut_min, debut_sec, fin_min, fin_sec, speaker, texte = match.groups()
+
+                            debut = int(debut_min) * 60 + int(debut_sec)
+                            fin = int(fin_min) * 60 + int(fin_sec)
+                            texte = texte.strip()
+
+                            segment = {
+                                'debut': float(debut),
+                                'fin': float(fin),
+                                'texte': texte
+                            }
+
+                            # Ajouter speaker si présent
+                            if speaker:
+                                segment['speaker'] = speaker
+
+                            segments.append(segment)
+                            texte_complet.append(texte)
+
                     self.transcription = {
-                        'texte': texte,
+                        'texte': ' '.join(texte_complet),
                         'langue': 'fr',
-                        'segments': []
+                        'segments': segments
                     }
 
-            self._log("✅ Transcription chargée")
+            # Vérification
+            nb_segments = len(self.transcription.get('segments', []))
+            nb_chars = len(self.transcription.get('texte', ''))
+
+            self._log(f"✅ Transcription chargée")
+            self._log(f"   📊 {nb_segments} segments")
+            self._log(f"   📝 {nb_chars} caractères")
+
+            if nb_segments == 0:
+                raise ValueError("Aucun segment trouvé dans la transcription")
+
             self._start_ai_analysis()
 
         except Exception as e:
@@ -354,27 +651,23 @@ class MainWindow(QMainWindow):
     def _start_transcription(self):
         """Démarre la transcription"""
 
-        # Dans main_window.py, méthode _start_transcription
-        def _start_transcription(self):
-            """Démarre la transcription"""
-
-            # Vérifier si on est dans un exe
-            if getattr(sys, 'frozen', False):
-                QMessageBox.warning(
-                    self,
-                    "Fonctionnalité non disponible",
-                    "La transcription n'est pas disponible dans la version exécutable.\n\n"
-                    "Veuillez :\n"
-                    "1. Utiliser un fichier transcription existant\n"
-                    "2. OU installer Python et lancer : python podcasteur_gui.py"
-                )
-                self.btn_start.setEnabled(True)
-                return
+        # Vérifier si on est dans un exe
+        if getattr(sys, 'frozen', False):
+            QMessageBox.warning(
+                self,
+                "Fonctionnalité non disponible",
+                "La transcription n'est pas disponible dans la version exécutable.\n\n"
+                "Veuillez :\n"
+                "1. Utiliser un fichier transcription existant\n"
+                "2. OU installer Python et lancer : python podcasteur_gui.py"
+            )
+            self.btn_start.setEnabled(True)
+            return
 
         from src.gui.workers.transcription_worker import TranscriptionWorker
         from ..transcriber import Transcriber
 
-        self._log("\n📍 ÉTAPE 2/4 : Transcription")
+        self._log("\n📝 ÉTAPE 2/4 : Transcription")
 
         transcriber = Transcriber(self.config)
 
@@ -400,6 +693,12 @@ class MainWindow(QMainWindow):
     def _on_transcription_finished(self, transcription):
         """Transcription terminée → lancer analyse IA"""
         self.transcription = transcription
+
+        print(f"🔍 DEBUG transcription reçue:")
+        print(f"   - Clés: {transcription.keys()}")
+        print(f"   - Texte: {len(transcription.get('texte', ''))} caractères")
+        print(f"   - Segments: {len(transcription.get('segments', []))} segments")
+
         self._start_ai_analysis()
 
     def _start_ai_analysis(self):
@@ -416,7 +715,8 @@ class MainWindow(QMainWindow):
             analyzer,
             self.transcription,
             duree_cible=self.duree_spin.value(),
-            ton=self.ton_input.text()
+            ton=self.ton_combo.currentText(),
+            nombre_suggestions=self.suggestions_spin.value()  # ← AJOUTER
         )
 
         self.ai_worker.progress.connect(self._update_progress)
@@ -462,6 +762,21 @@ class MainWindow(QMainWindow):
 
         processor = AudioProcessor(self.config)
         dossier_sortie = Path(self.sortie_input.text())
+
+        # CORRECTION : S'assurer que tous les segments ont le chemin complet du fichier source
+        fichier_source_principal = str(self.fichier_mix) if self.fichier_mix else None
+
+        for segment in suggestion['segments']:
+            if 'fichier' in segment:
+                fichier_seg = Path(segment['fichier'])
+                # Si c'est juste un nom de fichier (pas un chemin absolu)
+                if not fichier_seg.is_absolute():
+                    # Si on a un fichier mix principal, l'utiliser
+                    if fichier_source_principal:
+                        segment['fichier'] = fichier_source_principal
+                    else:
+                        # Sinon essayer dans le dossier de sortie
+                        segment['fichier'] = str(dossier_sortie / segment['fichier'])
 
         self.montage_worker = MontageWorker(
             processor,
@@ -540,6 +855,10 @@ class MainWindow(QMainWindow):
         else:
             self.files_list.setEnabled(True)
 
+    def _on_format_changed(self, format_str):
+        """Active/désactive les options de qualité selon le format"""
+        self.qualite_combo.setEnabled(format_str == 'mp3')
+
     def _toggle_transcription_mode(self, state):
         """Active/désactive le mode transcription existante"""
         is_trans = state == Qt.CheckState.Checked.value
@@ -580,31 +899,507 @@ class MainWindow(QMainWindow):
         if file:
             line_edit.setText(file)
 
+    # Ajouter cette méthode helper dans la classe MainWindow
+    def _get_icon_path(self):
+        """Retourne le chemin de l'icône selon le contexte"""
+        if getattr(sys, 'frozen', False):
+            # Mode exécutable PyInstaller
+            base_path = Path(sys._MEIPASS)
+        else:
+            # Mode développement
+            base_path = Path(__file__).parent.parent.parent
+
+        return base_path / 'assets' / 'icon.ico'
+
     def _save_config(self):
         """Sauvegarde la configuration"""
+        # Audio
+        self.config['audio']['duree_fondu'] = self.fondu_spin.value()
+        self.config['audio']['silence_entre_segments'] = self.silence_spin.value()
+
+        # Éléments sonores
         self.config['elements_sonores']['activer'] = self.enable_sounds_check.isChecked()
         self.config['elements_sonores']['generique_debut']['fichier'] = self.intro_input.text()
+        self.config['elements_sonores']['generique_debut']['volume'] = self.intro_volume_spin.value()
         self.config['elements_sonores']['generique_fin']['fichier'] = self.outro_input.text()
-        self._log("Configuration sauvegardée")
+        self.config['elements_sonores']['generique_fin']['volume'] = self.outro_volume_spin.value()
+
+        # Tri fichiers
+        self.config['tri_fichiers']['methode'] = self.tri_methode_combo.currentText()
+        self.config['tri_fichiers']['ordre'] = self.tri_ordre_combo.currentText()
+
+        # IA
+        self.config['analyse_ia']['modele'] = self.modele_input.text()
+        self.config['analyse_ia']['temperature'] = self.temperature_spin.value()
+
+        self._log("✅ Configuration sauvegardée")
         self.statusBar().showMessage("Configuration sauvegardée", 3000)
+
+        QMessageBox.information(
+            self,
+            "Configuration sauvegardée",
+            "Les modifications seront appliquées au prochain lancement du workflow.\n\n"
+            "Note : Pour persister ces changements, modifiez config/default_config.yaml"
+        )
 
     def _charger_config(self):
         """Charge la configuration"""
-        config_path = Path(__file__).parent.parent.parent / 'config' / 'default_config.yaml'
+        # Gérer le mode PyInstaller
+        if getattr(sys, 'frozen', False):
+            # Mode exécutable
+            base_path = Path(sys._MEIPASS)
+        else:
+            # Mode développement
+            base_path = Path(__file__).parent.parent.parent
+
+        config_path = base_path / 'config' / 'default_config.yaml'
+
         if config_path.exists():
             with open(config_path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f)
-        return {
-            'elements_sonores': {
-                'activer': False,
-                'generique_debut': {'fichier': 'assets/intro.mp3'},
-                'generique_fin': {'fichier': 'assets/outro.mp3'}
+                config = yaml.safe_load(f)
+        else:
+            # Configuration par défaut
+            config = {
+                'elements_sonores': {
+                    'activer': False,
+                    'generique_debut': {'fichier': 'assets/intro.wav', 'volume': 0.8},
+                    'generique_fin': {'fichier': 'assets/outro.wav', 'volume': 0.8}
+                },
+                'tri_fichiers': {
+                    'methode': 'alphabetique',
+                    'ordre': 'croissant'
+                },
+                'audio': {
+                    'duree_fondu': 1000,
+                    'silence_entre_segments': 1000,
+                    'normaliser': True,
+                    'format_export': 'mp3',
+                    'debit': '192k'
+                }
             }
-        }
+
+        # Résoudre et vérifier TOUS les chemins relatifs dans elements_sonores
+        if 'elements_sonores' in config:
+            elements_ok = True
+
+            for key in ['generique_debut', 'generique_fin']:
+                if key in config['elements_sonores']:
+                    fichier = config['elements_sonores'][key].get('fichier', '')
+
+                    if fichier:
+                        chemin_fichier = Path(fichier)
+
+                        # Si chemin relatif, le résoudre depuis base_path
+                        if not chemin_fichier.is_absolute():
+                            chemin_absolu = base_path / fichier
+                            config['elements_sonores'][key]['fichier'] = str(chemin_absolu)
+
+                            # Vérifier l'existence
+                            if not chemin_absolu.exists():
+                                elements_ok = False
+
+            # Si un fichier manque, désactiver automatiquement les éléments sonores
+            if not elements_ok:
+                config['elements_sonores']['activer'] = False
+
+        return config
+
+    def _update_config_from_ui(self):
+        """Met à jour la config avec les valeurs de l'interface avant le workflow"""
+        # Format d'export et qualité
+        self.config['audio']['format_export'] = self.format_combo.currentText()
+        self.config['audio']['debit'] = self.qualite_combo.currentText()
+        self.config['audio']['normaliser'] = self.normalize_check.isChecked()
+
+        # Nombre de suggestions IA
+        if hasattr(self, 'suggestions_spin'):
+            self.config['analyse_ia']['nombre_suggestions'] = self.suggestions_spin.value()
+
+        # Ton (si modifié dans l'onglet config)
+        self.config['analyse_ia']['ton'] = self.ton_combo.currentText()
+
+        self._log(f"⚙️  Configuration appliquée : {self.format_combo.currentText().upper()}")
+        if self.format_combo.currentText() == 'mp3':
+            self._log(f"   Qualité : {self.qualite_combo.currentText()}")
+        self._log(f"   Normalisation : {'OUI' if self.normalize_check.isChecked() else 'NON'}")
 
     def _log(self, message):
         """Affiche un message dans la console"""
         self.console.append(message)
+
+    def _toggle_theme(self, checked):
+        """Bascule entre thème sombre et clair"""
+        self.dark_mode = checked
+        self._apply_theme(self.dark_mode)
+
+        # Mettre à jour le texte du bouton
+        if self.dark_mode:
+            self.theme_toggle.setText("🌙 Mode sombre")
+        else:
+            self.theme_toggle.setText("☀️ Mode clair")
+
+        self.statusBar().showMessage(
+            f"Thème {'sombre' if self.dark_mode else 'clair'} activé",
+            2000
+        )
+
+    def _apply_theme(self, dark_mode):
+        """Applique le thème sombre ou clair à l'application"""
+        app = QApplication.instance()
+
+        if dark_mode:
+            # Thème SOMBRE (moderne)
+            dark_stylesheet = """
+                QMainWindow, QWidget {
+                    background-color: #1e1e1e;
+                    color: #e0e0e0;
+                }
+
+                QGroupBox {
+                    border: 2px solid #3a3a3a;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    font-weight: bold;
+                    color: #ffffff;
+                }
+
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+
+                QLabel {
+                    color: #e0e0e0;
+                }
+
+                QPushButton {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    min-height: 24px;
+                }
+
+                QPushButton:hover {
+                    background-color: #3a3a3a;
+                    border: 1px solid #4a90e2;
+                }
+
+                QPushButton:pressed {
+                    background-color: #252525;
+                }
+
+                QPushButton:disabled {
+                    background-color: #1a1a1a;
+                    color: #666666;
+                }
+
+                QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    min-height: 24px;
+                }
+
+                QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+                    border: 1px solid #4a90e2;
+                }
+
+                QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
+                    background-color: #1a1a1a;
+                    color: #666666;
+                }
+
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 6px solid #ffffff;
+                    margin-right: 6px;
+                }
+
+                QComboBox QAbstractItemView {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    selection-background-color: #4a90e2;
+                    border: 1px solid #3a3a3a;
+                }
+
+                QTextEdit {
+                    background-color: #252525;
+                    color: #e0e0e0;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 10pt;
+                }
+
+                QListWidget {
+                    background-color: #2d2d2d;
+                    color: #ffffff;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                }
+
+                QListWidget::item:selected {
+                    background-color: #4a90e2;
+                }
+
+                QProgressBar {
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    background-color: #2d2d2d;
+                    text-align: center;
+                    color: #ffffff;
+                    min-height: 20px;
+                }
+
+                QProgressBar::chunk {
+                    background-color: #4a90e2;
+                    border-radius: 3px;
+                }
+
+                QCheckBox {
+                    color: #e0e0e0;
+                    spacing: 8px;
+                }
+
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #3a3a3a;
+                    border-radius: 3px;
+                    background-color: #2d2d2d;
+                }
+
+                QCheckBox::indicator:checked {
+                    background-color: #4a90e2;
+                    border-color: #4a90e2;
+                }
+
+                QCheckBox::indicator:checked:after {
+                    content: "✓";
+                    color: white;
+                    font-weight: bold;
+                }
+
+                QTabWidget::pane {
+                    border: 1px solid #3a3a3a;
+                    border-radius: 4px;
+                    background-color: #1e1e1e;
+                }
+
+                QTabBar::tab {
+                    background-color: #2d2d2d;
+                    color: #e0e0e0;
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+
+                QTabBar::tab:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QTabBar::tab:hover:!selected {
+                    background-color: #3a3a3a;
+                }
+
+                QStatusBar {
+                    background-color: #252525;
+                    color: #e0e0e0;
+                    border-top: 1px solid #3a3a3a;
+                }
+            """
+            app.setStyleSheet(dark_stylesheet)
+
+        else:
+            # Thème CLAIR (moderne)
+            light_stylesheet = """
+                QMainWindow, QWidget {
+                    background-color: #f5f5f5;
+                    color: #212121;
+                }
+
+                QGroupBox {
+                    border: 2px solid #d0d0d0;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    font-weight: bold;
+                    color: #212121;
+                }
+
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 10px;
+                    padding: 0 5px;
+                }
+
+                QLabel {
+                    color: #212121;
+                }
+
+                QPushButton {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    min-height: 24px;
+                }
+
+                QPushButton:hover {
+                    background-color: #e8e8e8;
+                    border: 1px solid #4a90e2;
+                }
+
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+
+                QPushButton:disabled {
+                    background-color: #f0f0f0;
+                    color: #a0a0a0;
+                }
+
+                QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    min-height: 24px;
+                }
+
+                QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+                    border: 1px solid #4a90e2;
+                }
+
+                QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
+                    background-color: #f0f0f0;
+                    color: #a0a0a0;
+                }
+
+                QComboBox::drop-down {
+                    border: none;
+                    width: 20px;
+                }
+
+                QComboBox::down-arrow {
+                    image: none;
+                    border-left: 4px solid transparent;
+                    border-right: 4px solid transparent;
+                    border-top: 6px solid #212121;
+                    margin-right: 6px;
+                }
+
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    color: #212121;
+                    selection-background-color: #4a90e2;
+                    selection-color: #ffffff;
+                    border: 1px solid #d0d0d0;
+                }
+
+                QTextEdit {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 10pt;
+                }
+
+                QListWidget {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                }
+
+                QListWidget::item:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QProgressBar {
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    background-color: #ffffff;
+                    text-align: center;
+                    color: #212121;
+                    min-height: 20px;
+                }
+
+                QProgressBar::chunk {
+                    background-color: #4a90e2;
+                    border-radius: 3px;
+                }
+
+                QCheckBox {
+                    color: #212121;
+                    spacing: 8px;
+                }
+
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #d0d0d0;
+                    border-radius: 3px;
+                    background-color: #ffffff;
+                }
+
+                QCheckBox::indicator:checked {
+                    background-color: #4a90e2;
+                    border-color: #4a90e2;
+                }
+
+                QTabWidget::pane {
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    background-color: #f5f5f5;
+                }
+
+                QTabBar::tab {
+                    background-color: #ffffff;
+                    color: #212121;
+                    padding: 8px 16px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+
+                QTabBar::tab:selected {
+                    background-color: #4a90e2;
+                    color: #ffffff;
+                }
+
+                QTabBar::tab:hover:!selected {
+                    background-color: #e8e8e8;
+                }
+
+                QStatusBar {
+                    background-color: #ffffff;
+                    color: #212121;
+                    border-top: 1px solid #d0d0d0;
+                }
+            """
+            app.setStyleSheet(light_stylesheet)
 
     def _update_status(self):
         """Met à jour la barre de statut"""

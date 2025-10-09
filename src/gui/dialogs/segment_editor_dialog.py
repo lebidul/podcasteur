@@ -7,19 +7,32 @@ from PyQt6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QMessageBox,
     QTimeEdit, QLineEdit, QSpinBox, QWidget,
-    QDialogButtonBox
+    QDialogButtonBox, QFileDialog, QFormLayout, QStatusBar
 )
-from PyQt6.QtCore import Qt, QTime
+from PyQt6.QtCore import Qt, QTime, QUrl
 from PyQt6.QtGui import QColor
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from pydub import AudioSegment
+from pathlib import Path
+import tempfile
+import os
 
 
 class SegmentEditorDialog(QDialog):
     """Éditeur de segments avec ajout/suppression/modification"""
 
-    def __init__(self, suggestion, parent=None):
+    def __init__(self, suggestion, parent=None, fichier_mix=None):
         super().__init__(parent)
         self.suggestion = suggestion
         self.segments = [seg.copy() for seg in suggestion['segments']]  # Copie pour modification
+        self.fichier_mix = fichier_mix
+
+        # Audio playback
+        self.audio_player = None
+        self.audio_output = None
+        self.current_playing_row = -1
+        self.temp_audio_files = []  # Pour nettoyer les fichiers temporaires
+
         self.init_ui()
 
     def init_ui(self):
@@ -44,19 +57,21 @@ class SegmentEditorDialog(QDialog):
 
         # Tableau des segments
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "Début (MM:SS)", "Fin (MM:SS)", "Durée", "Fichier source", "Description", "Actions"
+            "▶️", "Début (MM:SS)", "Fin (MM:SS)", "Durée", "Fichier source", "Description", "Actions"
         ])
 
         # Configuration du tableau
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Bouton play
+        self.table.setColumnWidth(0, 45)  # ← CHANGÉ : 45 au lieu de 50
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # ← CHANGÉ : Stretch au lieu de Interactive
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # ← CHANGÉ : Stretch au lieu de Stretch (ok)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
 
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(
@@ -93,6 +108,10 @@ class SegmentEditorDialog(QDialog):
 
         layout.addLayout(segment_buttons)
 
+        # Status bar pour les messages de lecture
+        self.status_bar = QStatusBar()
+        layout.addWidget(self.status_bar)
+
         # Boutons de validation
         buttons_layout = QHBoxLayout()
 
@@ -122,59 +141,205 @@ class SegmentEditorDialog(QDialog):
         self.table.setRowCount(len(self.segments))
 
         for i, seg in enumerate(self.segments):
-            # Début (colonne 0)
+            # Colonne 0 : Bouton play
+            play_btn = QPushButton("▶️")
+            play_btn.setMaximumWidth(35)  # ← CHANGÉ : 35 au lieu de 40
+            play_btn.setMaximumHeight(25)  # ← AJOUTÉ
+            play_btn.setProperty('row', i)
+            play_btn.clicked.connect(self._play_segment)
+            play_btn.setToolTip("Écouter ce segment")
+            self.table.setCellWidget(i, 0, play_btn)
+
+            # Début (colonne 1)
             debut_item = QTableWidgetItem(self._formater_temps(seg['debut']))
             debut_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             debut_item.setFlags(debut_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(i, 0, debut_item)
+            self.table.setItem(i, 1, debut_item)
 
-            # Fin (colonne 1)
+            # Fin (colonne 2)
             fin_item = QTableWidgetItem(self._formater_temps(seg['fin']))
             fin_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             fin_item.setFlags(fin_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(i, 1, fin_item)
+            self.table.setItem(i, 2, fin_item)
 
-            # Durée (colonne 2)
+            # Durée (colonne 3)
             duree = seg['fin'] - seg['debut']
             duree_item = QTableWidgetItem(self._formater_temps(duree))
             duree_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             duree_item.setFlags(duree_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(i, 2, duree_item)
+            self.table.setItem(i, 3, duree_item)
 
-            # Fichier source (colonne 3) - Widget personnalisé
+            # Fichier source (colonne 4) - Widget personnalisé
             fichier_widget = QWidget()
             fichier_layout = QHBoxLayout(fichier_widget)
             fichier_layout.setContentsMargins(2, 0, 2, 0)
 
             fichier_edit = QLineEdit(seg.get('fichier', 'mix_complet.wav'))
-            fichier_edit.setProperty('row', i)  # Stocker l'indice de ligne
+            fichier_edit.setProperty('row', i)
 
             fichier_btn = QPushButton("📁")
-            fichier_btn.setMaximumWidth(30)
+            fichier_btn.setMaximumWidth(35)  # ← CHANGÉ : 35 au lieu de 30
+            fichier_btn.setMaximumHeight(25)  # ← AJOUTÉ
             fichier_btn.setProperty('row', i)
             fichier_btn.clicked.connect(self._browse_fichier_source)
 
             fichier_layout.addWidget(fichier_edit)
             fichier_layout.addWidget(fichier_btn)
 
-            self.table.setCellWidget(i, 3, fichier_widget)
+            self.table.setCellWidget(i, 4, fichier_widget)
 
-            # Description (colonne 4)
+            # Description (colonne 5)
             desc_item = QTableWidgetItem(seg.get('description', ''))
-            self.table.setItem(i, 4, desc_item)
+            self.table.setItem(i, 5, desc_item)
 
-            # Actions (colonne 5)
-            actions_item = QTableWidgetItem("🔍")
+            # Actions (colonne 6)
+            actions_item = QTableWidgetItem("🔧")
             actions_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             actions_item.setFlags(actions_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(i, 5, actions_item)
+            self.table.setItem(i, 6, actions_item)
 
         self._update_duree_totale()
 
+    def _play_segment(self):
+        """Joue le segment audio correspondant"""
+        button = self.sender()
+        row = button.property('row')
+
+        if row < 0 or row >= len(self.segments):
+            return
+
+        segment = self.segments[row]
+
+        # Obtenir le fichier source depuis le widget
+        fichier_widget = self.table.cellWidget(row, 4)
+        fichier_source = 'mix_complet.wav'
+
+        if fichier_widget:
+            fichier_edit = fichier_widget.findChild(QLineEdit)
+            if fichier_edit:
+                fichier_source = fichier_edit.text()
+
+        # Vérifier que le fichier existe
+        fichier_path = Path(fichier_source)
+        if not fichier_path.exists():
+            # Essayer dans le dossier output
+            fichier_path = Path('output') / fichier_source
+            if not fichier_path.exists():
+                QMessageBox.warning(
+                    self,
+                    "Fichier introuvable",
+                    f"Le fichier audio '{fichier_source}' n'existe pas.\n\n"
+                    "Assurez-vous que le fichier source est accessible."
+                )
+                return
+
+        try:
+            # Si déjà en train de jouer ce segment, arrêter
+            if self.current_playing_row == row and self.audio_player and self.audio_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+                self._stop_playback()
+                return
+
+            # Arrêter toute lecture en cours
+            self._stop_playback()
+
+            # Changer le bouton en "en cours de lecture"
+            button.setText("⏸️")
+            self.current_playing_row = row
+
+            # Extraire le segment avec pydub
+            self.status_bar.showMessage(f"📀 Extraction du segment {row + 1}...", 2000)
+
+            audio = AudioSegment.from_file(str(fichier_path))
+            debut_ms = int(segment['debut'] * 1000)
+            fin_ms = int(segment['fin'] * 1000)
+            segment_audio = audio[debut_ms:fin_ms]
+
+            # Créer un fichier temporaire
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+            temp_path = temp_file.name
+            temp_file.close()
+
+            # Exporter le segment
+            segment_audio.export(temp_path, format='wav')
+            self.temp_audio_files.append(temp_path)
+
+            # Créer le player si nécessaire
+            if not self.audio_player:
+                self.audio_player = QMediaPlayer()
+                self.audio_output = QAudioOutput()
+                self.audio_player.setAudioOutput(self.audio_output)
+
+                # Connecter les signaux
+                self.audio_player.playbackStateChanged.connect(self._on_playback_state_changed)
+                self.audio_player.errorOccurred.connect(self._on_player_error)
+
+            # Charger et jouer
+            self.audio_player.setSource(QUrl.fromLocalFile(temp_path))
+            self.audio_player.play()
+
+            self.status_bar.showMessage(f"▶️ Lecture du segment {row + 1}...", 3000)
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erreur de lecture",
+                f"Impossible de lire le segment :\n{str(e)}"
+            )
+            self._reset_play_button(row)
+
+    def _stop_playback(self):
+        """Arrête la lecture en cours"""
+        if self.audio_player:
+            self.audio_player.stop()
+
+        if self.current_playing_row >= 0:
+            self._reset_play_button(self.current_playing_row)
+            self.current_playing_row = -1
+
+    def _reset_play_button(self, row):
+        """Remet le bouton play à son état initial"""
+        if row >= 0 and row < self.table.rowCount():
+            play_btn = self.table.cellWidget(row, 0)
+            if play_btn:
+                play_btn.setText("▶️")
+
+    def _on_playback_state_changed(self, state):
+        """Gère les changements d'état de lecture"""
+        if state == QMediaPlayer.PlaybackState.StoppedState:
+            # Lecture terminée, réinitialiser le bouton
+            if self.current_playing_row >= 0:
+                self._reset_play_button(self.current_playing_row)
+                self.current_playing_row = -1
+                self.status_bar.showMessage("⏹️ Lecture terminée", 2000)
+
+    def _on_player_error(self, error, error_string):
+        """Gère les erreurs du player"""
+        QMessageBox.warning(
+            self,
+            "Erreur de lecture",
+            f"Erreur lors de la lecture audio :\n{error_string}"
+        )
+        if self.current_playing_row >= 0:
+            self._reset_play_button(self.current_playing_row)
+            self.current_playing_row = -1
+
+    def closeEvent(self, event):
+        """Nettoie les ressources avant fermeture"""
+        # Arrêter la lecture
+        self._stop_playback()
+
+        # Supprimer les fichiers temporaires
+        for temp_file in self.temp_audio_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.unlink(temp_file)
+            except:
+                pass
+
+        event.accept()
+
     def _browse_fichier_source(self):
         """Parcourir un fichier source pour un segment"""
-        from PyQt6.QtWidgets import QFileDialog
-
         button = self.sender()
         row = button.property('row')
 
@@ -187,15 +352,13 @@ class SegmentEditorDialog(QDialog):
 
         if file:
             # Mettre à jour le QLineEdit dans le widget
-            fichier_widget = self.table.cellWidget(row, 3)
+            fichier_widget = self.table.cellWidget(row, 4)
             fichier_edit = fichier_widget.findChild(QLineEdit)
             if fichier_edit:
                 fichier_edit.setText(file)
 
     def _add_segment(self):
         """Ajoute un nouveau segment"""
-        from PyQt6.QtWidgets import QDialog, QFormLayout, QDialogButtonBox
-
         dialog = QDialog(self)
         dialog.setWindowTitle("Ajouter un segment")
         layout = QFormLayout(dialog)
@@ -211,11 +374,17 @@ class SegmentEditorDialog(QDialog):
 
         # Fichier source avec bouton parcourir
         fichier_layout = QHBoxLayout()
-        fichier_edit = QLineEdit("mix_complet.wav")
+
+        # Fichier source avec bouton parcourir
+        fichier_defaut = "mix_complet.wav"
+        if self.segments and len(self.segments) > 0:
+            # Prendre le fichier du premier segment (qui a le chemin complet)
+            fichier_defaut = self.segments[0].get('fichier', 'mix_complet.wav')
+
+        fichier_edit = QLineEdit(fichier_defaut)
         fichier_btn = QPushButton("📁")
 
         def browse_file():
-            from PyQt6.QtWidgets import QFileDialog
             file, _ = QFileDialog.getOpenFileName(
                 dialog, "Sélectionner fichier source", "",
                 "Fichiers audio (*.wav *.mp3 *.flac *.m4a)"
@@ -268,8 +437,6 @@ class SegmentEditorDialog(QDialog):
             QMessageBox.warning(self, "Aucune sélection", "Sélectionnez un segment à modifier")
             return
 
-        from PyQt6.QtWidgets import QDialog, QFormLayout, QDialogButtonBox
-
         segment = self.segments[current_row]
 
         dialog = QDialog(self)
@@ -295,7 +462,6 @@ class SegmentEditorDialog(QDialog):
         fichier_btn = QPushButton("📁")
 
         def browse_file():
-            from PyQt6.QtWidgets import QFileDialog
             file, _ = QFileDialog.getOpenFileName(
                 dialog, "Sélectionner fichier source", "",
                 "Fichiers audio (*.wav *.mp3 *.flac *.m4a)"
@@ -328,6 +494,10 @@ class SegmentEditorDialog(QDialog):
             if debut_sec >= fin_sec:
                 QMessageBox.warning(self, "Erreur", "Le début doit être avant la fin")
                 return
+
+            # Si un segment est en cours de lecture, l'arrêter
+            if self.current_playing_row == current_row:
+                self._stop_playback()
 
             self.segments[current_row] = {
                 'debut': float(debut_sec),
@@ -430,16 +600,15 @@ class SegmentEditorDialog(QDialog):
         segments_finaux = []
 
         for i in range(self.table.rowCount()):
-            fichier_widget = self.table.cellWidget(i, 3)
+            fichier_widget = self.table.cellWidget(i, 4)
             fichier = 'mix_complet.wav'
 
             if fichier_widget:
                 fichier_edit = fichier_widget.findChild(QLineEdit)
                 if fichier_edit:
                     fichier = fichier_edit.text()
-                    print(f"Segment {i}: fichier = {fichier}")  # DEBUG
 
-            desc_item = self.table.item(i, 4)
+            desc_item = self.table.item(i, 5)
             description = desc_item.text() if desc_item else ''
 
             if i < len(self.segments):
@@ -450,7 +619,6 @@ class SegmentEditorDialog(QDialog):
                     'description': description
                 })
 
-        print(f"Segments finaux: {segments_finaux}")  # DEBUG
         return segments_finaux
 
     @staticmethod

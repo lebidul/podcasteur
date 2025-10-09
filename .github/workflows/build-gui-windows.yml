@@ -26,8 +26,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip uninstall pathlib -y
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pyinstaller-hooks-contrib
 
       - name: Build executable
         run: |
@@ -36,7 +37,14 @@ jobs:
       - name: Create distribution package
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          # Détecter la version correctement
+          if [[ "${{ github.event_name }}" == "push" ]] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="manual-$(date +%Y%m%d-%H%M%S)"
+          fi
+          
+          echo "Version détectée: $version"
           dist_name="Podcasteur-GUI-Windows-${version}"
           
           mkdir -p "${dist_name}"

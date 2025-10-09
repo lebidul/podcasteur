@@ -20,10 +20,20 @@
 - [x] ajouter nom du fichier à l'édition des séquences
 - [x] dossier de sortie dans GUI
 - [x] affichage des suggestions
-- [ ] ton: picklist + 'Autre..'
+- [x] ajouter la possibilité de soumettre le découpage en json
+- [x] ajouter la possibilité d'écouter les segments dans l'éditeur de segments
+- [x] les suggestions de claude sont devenues très génériques, elles ne mentionnent plus le contexte précis et des éléments précis de la transcription
+- [x] ton: picklist + 'Autre..'
+- [x] fichier icône
+- [x] étendre + intégrer onglet config
+- [x] thème clair
+- [x] icône dossier écrasé dans éditeur de segments
 - [ ] .exe + mac + linux
-- [ ] étendre + intégrer onglet config
-- [ ] thème clair
-- [ ] ajouter la possibilité de soumettre le découpage en json
-- [ ] workflow manuel
+- [ ] workflow manuel (tout dans même tab ?)
 - [ ] transcription dans .exe
+- [ ] Persistence du thème choisi
+- [ ] Raccourcis clavier dans l'éditeur
+- [ ] Export multi-formats simultané
+- [ ] Prévisualisation waveform
+- [ ] Historique des découpages
+- [ ] Bouton mode débug (avec fichier .log)
