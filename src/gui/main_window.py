@@ -564,10 +564,20 @@ class MainWindow(QMainWindow):
         self.concat_worker.finished.connect(self._on_concat_finished)
         self.concat_worker.error.connect(self._on_error)
         self.concat_worker.start()
+
     def _on_concat_finished(self, fichier_mix):
-        """Concaténation terminée → lancer transcription"""
+        """Concaténation terminée → lancer transcription ou charger existante"""
         self.fichier_mix = fichier_mix
-        self._start_transcription()
+
+        # Vérifier si l'utilisateur veut utiliser une transcription existante
+        mode_trans = self.use_transcription_check.isChecked() and bool(self.transcription_file_input.text())
+
+        if mode_trans:
+            # Charger la transcription existante
+            self._charger_transcription_existante()
+        else:
+            # Faire la transcription
+            self._start_transcription()
 
     def _charger_transcription_existante(self):
         """Charge une transcription depuis un fichier"""
