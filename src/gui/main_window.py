@@ -753,6 +753,21 @@ class MainWindow(QMainWindow):
         processor = AudioProcessor(self.config)
         dossier_sortie = Path(self.sortie_input.text())
 
+        # CORRECTION : S'assurer que tous les segments ont le chemin complet du fichier source
+        fichier_source_principal = str(self.fichier_mix) if self.fichier_mix else None
+
+        for segment in suggestion['segments']:
+            if 'fichier' in segment:
+                fichier_seg = Path(segment['fichier'])
+                # Si c'est juste un nom de fichier (pas un chemin absolu)
+                if not fichier_seg.is_absolute():
+                    # Si on a un fichier mix principal, l'utiliser
+                    if fichier_source_principal:
+                        segment['fichier'] = fichier_source_principal
+                    else:
+                        # Sinon essayer dans le dossier de sortie
+                        segment['fichier'] = str(dossier_sortie / segment['fichier'])
+
         self.montage_worker = MontageWorker(
             processor,
             self.fichier_mix,
