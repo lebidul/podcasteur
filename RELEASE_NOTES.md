@@ -5,40 +5,92 @@
 ## 🎉 Interface Graphique - Première Release GUI
 
 Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podcasteur sans ligne de commande.
+**Note importante** : Cette version apporte une refonte majeure de l'expérience utilisateur avec l'ajout de l'interface graphique complète. Le CLI reste pleinement fonctionnel pour les utilisateurs avancés.
 
 ### ✨ Nouvelles fonctionnalités
 
 #### Interface Graphique (GUI)
 - **Application PyQt6** moderne et intuitive
+- **Thème clair/sombre** : Basculez entre les deux thèmes selon vos préférences (défaut : clair)
+- **Icône d'application** : Icône personnalisée pour l'exécutable Windows
 - **Sélection de fichiers** par boutons ou sélection de dossier
-- **Configuration visuelle** : durée cible, ton, détection speakers
+- **Configuration visuelle complète** :
+  - Durée cible (1-120 minutes)
+  - Ton souhaité (4 presets : informatif, détendu, professionnel, créatif)
+  - Nombre de suggestions IA (1-5)
+  - Format d'export (MP3/WAV/FLAC)
+  - Qualité audio MP3 (128k à 320k)
+  - Normalisation audio (on/off)
+  - Détection de speakers (nécessite token HuggingFace)
 - **Support fichiers existants** : utilisation de mix/transcription pré-générés
-- **Sélection du dossier de sortie** : choix libre du dossier où seront créés les podcasts
+- **Sélection obligatoire du dossier de sortie** : choix libre et validé du dossier où seront créés les podcasts
 - **Barre de progression** en temps réel avec logs détaillés
-- **Éditeur de segments interactif** :
+- **Console de logs** avec police monospace pour meilleure lisibilité
+
+#### Éditeur de segments interactif
+- **Lecture audio intégrée** : Bouton ▶️ pour écouter chaque segment avant montage
+  - Lecture réactive aux modifications de timestamps
+  - Un seul segment joue à la fois
+  - Extraction dynamique avec pydub
+  - Indicateurs visuels (▶️ → ⏸️)
+  - Messages de statut en temps réel
+- **Édition complète** :
   - Ajout/suppression/modification de segments
   - Réorganisation par glisser-déposer (↑↓)
   - Édition des timestamps avec sélecteur de temps
   - Édition du fichier source avec parcours de fichiers
-  - Édition directe dans le tableau (double-clic)
-  - Validation des chevauchements
+  - Édition directe de la description dans le tableau (double-clic)
+  - Validation des chevauchements de segments
   - Réinitialisation aux suggestions originales
-- **Dialogue de suggestions** avec :
-  - Affichage détaillé de chaque suggestion Claude
-  - Sélection d'une suggestion
-  - Affinage avec feedback texte libre
-  - Création de découpage personnalisé
-  - **Import JSON** : réutilisation de découpages existants
+- **Interface optimisée** :
+  - Colonnes redimensionnables intelligemment
+  - Boutons compacts et bien alignés
+  - Status bar pour messages de lecture
+
+#### Dialogue de suggestions avec affinage IA
+- **Affichage détaillé** de chaque suggestion Claude
+- **Sélection** d'une suggestion avec radio buttons
+- **Affinage avec feedback** : Donnez un retour textuel pour régénérer des suggestions améliorées
+- **Création de découpage personnalisé** : Partez de zéro
+- **Import JSON** : Réutilisation de découpages existants (métadonnées ou segments)
+
+#### Onglet Configuration avancée
+- **Paramètres audio** :
+  - Durée des fondus (0-5000ms)
+  - Silence entre segments (0-5000ms)
+- **Éléments sonores** :
+  - Activation intro/outro
+  - Sélection de fichiers personnalisés
+  - Réglage du volume intro (0.0-1.0)
+  - Réglage du volume outro (0.0-1.0)
+- **Tri des fichiers audio** :
+  - Méthode : Alphabétique ou Date de création
+  - Ordre : Croissant ou Décroissant
+- **Paramètres IA** :
+  - Modèle Claude (configurable)
+  - Température (0.0-1.0)
+- **Apparence** :
+  - Toggle thème clair/sombre
+  - Design moderne avec coins arrondis
+  - Couleurs cohérentes et accessibles
+
+#### Analyse IA améliorée
+- **Prompt optimisé** avec instructions strictes pour des suggestions spécifiques
+- **Citations obligatoires** : Claude doit citer des passages précis de la transcription
+- **Variété éditoriale** : Best-of, Narrative, Thématique
+- **Support des speakers** dans le formatage des transcriptions
+- **Parser robuste** : Gestion améliorée des formats de transcription avec timestamps
 
 #### Workflow GUI Automatique
 1. **Sélection** des fichiers audio (ou fichier mix existant)
-2. **Configuration** du dossier de sortie
-3. **Concaténation** automatique (optionnel si mix fourni)
-4. **Transcription** WhisperX (optionnel si transcription fournie)
-5. **Analyse IA** avec Claude pour générer suggestions
-6. **Sélection** d'une suggestion ou import JSON
-7. **Édition** des segments avant montage
-8. **Montage final** avec génération des métadonnées
+2. **Configuration** du dossier de sortie obligatoire
+3. **Application automatique** des paramètres UI avant le workflow
+4. **Concaténation** automatique (optionnel si mix fourni)
+5. **Transcription** WhisperX (optionnel si transcription fournie)
+6. **Analyse IA** avec Claude pour générer suggestions contextuelles
+7. **Sélection** d'une suggestion ou import JSON
+8. **Édition interactive** des segments avec écoute
+9. **Montage final** avec génération des métadonnées
 
 #### Fonctionnalités avancées GUI
 - **Skip concat** : Utiliser un fichier mix existant
@@ -46,7 +98,7 @@ Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podc
 - **Workflow ultra-rapide** : Mix + transcription → IA directe
 - **Multi-fichiers sources** : Chaque segment peut provenir d'un fichier différent
 - **Import découpage JSON** : Réutiliser des métadonnées ou découpages précédents
-- **Configuration intro/outro** dans l'onglet Configuration
+- **Configuration persistante** : Sauvegarde des paramètres entre sessions
 - **Métadonnées enrichies** : JSON + labels Audacity générés automatiquement
 
 ### 📦 Distribution
@@ -56,6 +108,7 @@ Ajout d'une interface graphique complète avec PyQt6, permettant d'utiliser Podc
 - Téléchargez `Podcasteur-GUI-Windows-v1.5.0.zip`
 - Extrayez et lancez `Podcasteur.exe`
 - Taille : ~250-300 MB (inclut dépendances PyTorch)
+- Icône personnalisée dans la barre des tâches
 
 **Autres plateformes (Source)**
 ```bash
@@ -74,7 +127,7 @@ python podcasteur_gui.py
 **GUI Source (toutes plateformes)**
 - Python 3.8+
 - FFmpeg
-- PyQt6
+- PyQt6 >= 6.6.0
 - Toutes les dépendances CLI
 
 ### 🔧 Installation
@@ -97,26 +150,39 @@ pip install podcasteur-1.5.0-py3-none-any.whl
 
 **Workflow standard**
 1. Ajouter fichiers audio ou sélectionner dossier
-2. Choisir le dossier de sortie (défaut : `output`)
-3. Configurer durée cible et ton
-4. Cliquer "Lancer le workflow automatique"
+2. Choisir le dossier de sortie (obligatoire)
+3. Configurer durée cible, ton, format d'export
+4. Cliquer "🚀 Lancer le workflow automatique"
 5. Attendre transcription et analyse IA
-6. Sélectionner une suggestion ou importer un JSON
-7. Éditer les segments si nécessaire
-8. Cliquer "Créer le podcast"
+6. Sélectionner une suggestion, affiner avec feedback, ou importer un JSON
+7. Éditer les segments si nécessaire (avec écoute ▶️)
+8. Cliquer "✅ Créer le podcast"
 
 **Workflow rapide (ré-édition)**
 1. Cocher "Utiliser fichier mix existant"
 2. Sélectionner `output/mix_complet.wav`
 3. Cocher "Utiliser transcription existante"
 4. Sélectionner `output/transcription_timestamps.txt`
-5. Lancer le workflow (skip concat/transcription)
+5. Choisir le dossier de sortie
+6. Lancer le workflow (skip concat/transcription)
+
+**Écoute des segments**
+1. Dans l'éditeur de segments, cliquer sur ▶️ pour un segment
+2. L'extrait audio est joué instantanément
+3. Modifier les timestamps avec ✏️ si nécessaire
+4. Re-cliquer sur ▶️ pour écouter la version modifiée
 
 **Import découpage existant**
 1. Dans le dialogue de suggestions, cliquer "📁 Importer JSON"
 2. Sélectionner un fichier de métadonnées (*.json) généré précédemment
 3. Les segments sont automatiquement chargés dans l'éditeur
 4. Modifier si nécessaire et créer le podcast
+
+**Affinage des suggestions**
+1. Dans le dialogue de suggestions, cliquer "🔄 Affiner avec feedback"
+2. Décrire vos attentes (ex: "Plus court, 3 minutes max")
+3. Claude génère 3 nouvelles suggestions basées sur votre feedback
+4. Sélectionner la meilleure et continuer
 
 ### 🖥️ Interface CLI (inchangée depuis v1.4.0)
 
@@ -145,47 +211,66 @@ python podcasteur_gui.py
 ```
 PyQt6>=6.6.0
 python-dotenv>=1.0.0
+pydub>=0.25.1  # Pour lecture audio segments
 ```
 
 ### 🏗️ Architecture technique
 
 **Nouveaux modules**
 - `src/gui/main.py` : Point d'entrée GUI
-- `src/gui/main_window.py` : Fenêtre principale avec workflow complet
+- `src/gui/main_window.py` : Fenêtre principale avec workflow complet et gestion des thèmes
 - `src/gui/workers/` : Workers Qt pour threading
   - `concat_worker.py`
   - `transcription_worker.py`
-  - `ai_worker.py`
+  - `ai_worker.py` : Support nombre_suggestions paramétrable
   - `montage_worker.py`
 - `src/gui/dialogs/` : Dialogues GUI
   - `suggestions_dialog.py` : Sélection/affinage/import
-  - `segment_editor_dialog.py` : Édition interactive
+  - `segment_editor_dialog.py` : Édition interactive avec lecture audio
+- `assets/icon.ico` : Icône de l'application
 
 **Amélioration backend**
 - `AudioProcessor.creer_montage()` : Support multi-fichiers sources avec cache
+- `AIAnalyzer._construire_prompt()` : Prompt amélioré avec instructions de spécificité
+- `Transcriber._formater_resultat()` : Support speakers dans segments
 - Métadonnées enrichies avec fichiers sources multiples
 - Correction calcul de durée dans les métadonnées
+- Parser de transcription avec timestamps et speakers
 
 ### 📝 Fichiers générés par la GUI
 
 ```
 [dossier_sortie]/
 └── podcast_titre_20250106_143052/
-    ├── podcast_titre_20250106_143052.mp3   # Audio final
+    ├── podcast_titre_20250106_143052.mp3   # Audio final (format choisi)
     ├── podcast_titre_20250106_143052.json  # Métadonnées (réutilisable)
     └── podcast_titre_20250106_143052.txt   # Labels Audacity
 ```
 
 ### 🐛 Corrections de bugs
 
+**Interface graphique**
 - Fix : Colonne "Fichier source" affichant la description
 - Fix : Widgets personnalisés non récupérés dans `get_segments()`
 - Fix : Checkboxes mix/transcription non affichées
 - Fix : Fichiers sources personnalisés non utilisés au montage
-- Fix : Calcul de durée incorrect dans les métadonnées
 - Fix : Fichier mix fourni par utilisateur non propagé aux segments
 - Fix : Imports PyQt6 manquants
 - Fix : Trigger d'édition tableau (DoubleClicked vs DoubleClick)
+- Fix : Format d'export et qualité audio non appliqués
+- Fix : QStatusBar non callable dans segment_editor
+- Fix : Définition de fonction imbriquée dans _start_transcription
+
+**Analyse IA**
+- Fix : Transcription vide envoyée à Claude (segments = [])
+- Fix : Parser de transcription timestamps mal géré pour fichiers .txt
+- Fix : Suggestions génériques sans contexte de la transcription
+- Fix : Import relatif incorrect dans main.py pour PyInstaller
+
+**Audio**
+- Fix : Calcul de durée incorrect dans les métadonnées
+- Fix : Assets intro/outro non trouvés dans l'exécutable
+- Fix : Chemins relatifs non résolus pour PyInstaller
 
 ### ⚠️ Limitations connues
 
@@ -196,6 +281,7 @@ python-dotenv>=1.0.0
 - **Taille importante** : L'exe fait ~250-300 MB (inclut PyTorch)
 - **GPU recommandé** : Pour transcription rapide avec WhisperX (mode Python)
 - **Workflow manuel GUI** : Pas encore implémenté (utiliser CLI)
+- **Lecture audio segments** : Nécessite que le fichier source soit accessible
 
 ### 🎯 Cas d'usage GUI
 
@@ -203,10 +289,12 @@ python-dotenv>=1.0.0
 ```
 1. Ajouter fichiers audio
 2. Cocher "Détecter les speakers"
-3. Lancer workflow
-4. Sélectionner suggestion
-5. Éditer si nécessaire
-6. Créer
+3. Configurer format MP3 320k
+4. Lancer workflow
+5. Sélectionner suggestion ou affiner
+6. Écouter les segments ▶️
+7. Éditer si nécessaire
+8. Créer
 ```
 
 **Ré-édition rapide (mode exe)**
@@ -215,39 +303,80 @@ python-dotenv>=1.0.0
 2. Sélectionner output/mix_complet.wav
 3. Cocher "Utiliser transcription existante"
 4. Sélectionner output/transcription_timestamps.txt
-5. Lancer (skip concat + transcription)
+5. Choisir dossier de sortie
+6. Lancer (skip concat + transcription)
 ```
 
-**Réutilisation découpage (nouveau)**
+**Réutilisation découpage**
 ```
 1. Workflow normal jusqu'aux suggestions
 2. Cliquer "📁 Importer JSON"
 3. Sélectionner un fichier métadonnées précédent
 4. Segments chargés automatiquement
-5. Modifier et créer
+5. Écouter et modifier si besoin
+6. Créer le podcast
 ```
 
-**Multi-sources**
+**Multi-sources avec écoute**
 ```
 1. Workflow standard
 2. Dans l'éditeur de segments :
-   - Modifier fichier source par segment
-   - Parcourir différents fichiers
+   - Cliquer ▶️ pour écouter chaque segment
+   - Modifier timestamps si besoin
+   - Changer fichier source par segment
+   - Écouter à nouveau pour valider
 3. Créer le podcast
 ```
+
+**Affinage itératif**
+```
+1. Lancer workflow, voir suggestions
+2. Cliquer "🔄 Affiner avec feedback"
+3. Taper : "Trop long, réduire à 3 minutes"
+4. Nouvelles suggestions générées
+5. Répéter si besoin
+6. Sélectionner et éditer
+```
+
+### 🎨 Design et UX
+
+**Thème sombre**
+- Fond : #1e1e1e
+- Texte : #e0e0e0
+- Accents : #4a90e2 (bleu)
+- Widgets avec coins arrondis
+- Effets hover subtils
+
+**Thème clair (défaut)**
+- Fond : #f5f5f5
+- Texte : #212121
+- Accents : #4a90e2 (bleu)
+- Design moderne et accessible
+- Bonne lisibilité
 
 ### 🙏 Remerciements
 
 Interface graphique développée avec PyQt6.
 Merci aux testeurs de la version beta.
+Icône créée spécialement pour Podcasteur.
 
 ### 📚 Documentation
 
-- README.md mis à jour avec section GUI
+- README.md mis à jour avec section GUI complète
 - README_WINDOWS.txt : Instructions exécutable
 - QUICKSTART_GUI.md (nouveau)
-- Guide d'édition de segments
+- Guide d'édition de segments avec écoute
 - Instructions d'installation Windows
+- Documentation des nouveaux paramètres de configuration
+
+### 🔮 À venir dans v1.6.0
+
+- Workflow manuel dans la GUI
+- Persistence du thème choisi
+- Raccourcis clavier dans l'éditeur
+- Export multi-formats simultané
+- Prévisualisation waveform
+- Historique des découpages
 
 ---
 

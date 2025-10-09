@@ -21,12 +21,13 @@
 - [x] dossier de sortie dans GUI
 - [x] affichage des suggestions
 - [x] ajouter la possibilité de soumettre le découpage en json
-- [ ] ajouter la possibilité d'écouter les segments dans l'éditeur de segments
+- [x] ajouter la possibilité d'écouter les segments dans l'éditeur de segments
 - [x] les suggestions de claude sont devenues très génériques, elles ne mentionnent plus le contexte précis et des éléments précis de la transcription
 - [x] ton: picklist + 'Autre..'
 - [x] fichier icone
-- [ ] .exe + mac + linux
 - [x] étendre + intégrer onglet config
-- [ ] thème clair
+- [x] thème clair
+- [x] icône dossier écrasé dans éditeur de segments
+- [ ] .exe + mac + linux
 - [ ] workflow manuel
 - [ ] transcription dans .exe

@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
         self.fichier_mix = None
         self.transcription = None
         self.suggestions = None
-        self.dark_mode = True  # Thème sombre par défaut
+        self.dark_mode = False  # Thème clair par défaut
 
         self.init_ui()
 
@@ -274,7 +274,7 @@ class MainWindow(QMainWindow):
         theme_layout = QHBoxLayout()
         theme_layout.addWidget(QLabel("Thème de l'interface :"))
 
-        self.theme_toggle = QPushButton("🌙 Mode sombre")
+        self.theme_toggle = QPushButton("☀️ Mode clair")
         self.theme_toggle.setCheckable(True)
         self.theme_toggle.setChecked(self.dark_mode)
         self.theme_toggle.clicked.connect(self._toggle_theme)
