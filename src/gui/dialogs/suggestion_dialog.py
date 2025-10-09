@@ -192,7 +192,12 @@ class SuggestionsDialog(QDialog):
             # Ouvrir l'éditeur
             from src.gui.dialogs.segment_editor_dialog import SegmentEditorDialog
 
-            editor = SegmentEditorDialog(suggestion_copy, self)
+            # Récupérer le fichier_mix depuis le parent (main_window)
+            fichier_mix = None
+            if hasattr(self.parent(), 'fichier_mix'):
+                fichier_mix = self.parent().fichier_mix
+
+            editor = SegmentEditorDialog(suggestion_copy, self, fichier_mix=fichier_mix)
 
             if editor.exec():
                 segments_modifies = editor.get_segments()
@@ -313,7 +318,12 @@ Garde le même format JSON que précédemment."""
             self.suggestion_selectionnee = suggestion_finale
             self.accept()
 
-        editor = SegmentEditorDialog(suggestion_template, self)
+        # Récupérer le fichier_mix depuis le parent (main_window)
+        fichier_mix = None
+        if hasattr(self.parent(), 'fichier_mix'):
+            fichier_mix = self.parent().fichier_mix
+
+        editor = SegmentEditorDialog(suggestion_template, self, fichier_mix=fichier_mix)
 
         if editor.exec():
             segments_modifies = editor.get_segments()
@@ -410,7 +420,12 @@ Garde le même format JSON que précédemment."""
             # Ouvrir l'éditeur
             from src.gui.dialogs.segment_editor_dialog import SegmentEditorDialog
 
-            editor = SegmentEditorDialog(suggestion, self)
+            # Récupérer le fichier_mix depuis le parent (main_window)
+            fichier_mix = None
+            if hasattr(self.parent(), 'fichier_mix'):
+                fichier_mix = self.parent().fichier_mix
+
+            editor = SegmentEditorDialog(suggestion, self, fichier_mix=fichier_mix)
 
             if editor.exec():
                 segments_modifies = editor.get_segments()
