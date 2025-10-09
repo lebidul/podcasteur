@@ -24,7 +24,7 @@
 - [x] ajouter la possibilité d'écouter les segments dans l'éditeur de segments
 - [x] les suggestions de claude sont devenues très génériques, elles ne mentionnent plus le contexte précis et des éléments précis de la transcription
 - [x] ton: picklist + 'Autre..'
-- [x] fichier icone
+- [x] fichier icône
 - [x] étendre + intégrer onglet config
 - [x] thème clair
 - [x] icône dossier écrasé dans éditeur de segments
