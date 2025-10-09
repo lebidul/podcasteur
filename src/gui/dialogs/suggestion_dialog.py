@@ -262,9 +262,28 @@ Garde le même format JSON que précédemment."""
 
                 progress.close()
 
-                # Remplacer les suggestions et rafraîchir
+                # Remplacer les suggestions
                 self.suggestions = nouvelles_suggestions
-                self._refresh_ui()
+                progress.close()
+
+                # Rouvrir un nouveau dialogue avec les nouvelles suggestions
+                nouveau_dialog = SuggestionsDialog(
+                    self.suggestions,
+                    self.parent(),
+                    ai_analyzer=self.ai_analyzer,
+                    transcription=self.transcription,
+                    duree_cible=self.duree_cible,
+                    ton=self.ton
+                )
+
+                # Fermer le dialogue actuel
+                self.accept()
+
+                # Ouvrir le nouveau
+                if nouveau_dialog.exec():
+                    # Transférer la suggestion sélectionnée
+                    self.suggestion_selectionnee = nouveau_dialog.get_suggestion()
+                    # Pas besoin de re-accept, on a déjà fermé
 
             except Exception as e:
                 progress.close()
@@ -272,16 +291,12 @@ Garde le même format JSON que précédemment."""
 
     def _refresh_ui(self):
         """Rafraîchit l'interface avec les nouvelles suggestions"""
-        # Supprimer l'ancien contenu
-        layout = self.layout()
-        for i in reversed(range(layout.count())):
-            widget = layout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
+        # Fermer le dialogue actuel et en créer un nouveau
+        # C'est plus fiable que de recréer l'UI en place
+        self.accept()  # Fermer le dialogue
 
-        # Recréer l'interface
-        self.button_group = QButtonGroup(self)
-        self.init_ui()
+        # Le parent va gérer l'ouverture d'un nouveau dialogue
+        # avec les suggestions mises à jour
 
     def _decoupage_perso(self):
         """Permet un découpage personnalisé"""
