@@ -373,6 +373,9 @@ class SegmentEditorDialog(QDialog):
         fin_edit.setTime(QTime(0, 30))
 
         # Fichier source avec bouton parcourir
+        fichier_layout = QHBoxLayout()
+
+        # Fichier source avec bouton parcourir
         fichier_defaut = "mix_complet.wav"
         if self.segments and len(self.segments) > 0:
             # Prendre le fichier du premier segment (qui a le chemin complet)
