@@ -21,10 +21,11 @@ import os
 class SegmentEditorDialog(QDialog):
     """Éditeur de segments avec ajout/suppression/modification"""
 
-    def __init__(self, suggestion, parent=None):
+    def __init__(self, suggestion, parent=None, fichier_mix=None):
         super().__init__(parent)
         self.suggestion = suggestion
         self.segments = [seg.copy() for seg in suggestion['segments']]  # Copie pour modification
+        self.fichier_mix = fichier_mix
 
         # Audio playback
         self.audio_player = None
@@ -372,8 +373,12 @@ class SegmentEditorDialog(QDialog):
         fin_edit.setTime(QTime(0, 30))
 
         # Fichier source avec bouton parcourir
-        fichier_layout = QHBoxLayout()
-        fichier_edit = QLineEdit("mix_complet.wav")
+        fichier_defaut = "mix_complet.wav"
+        if self.segments and len(self.segments) > 0:
+            # Prendre le fichier du premier segment (qui a le chemin complet)
+            fichier_defaut = self.segments[0].get('fichier', 'mix_complet.wav')
+
+        fichier_edit = QLineEdit(fichier_defaut)
         fichier_btn = QPushButton("📁")
 
         def browse_file():

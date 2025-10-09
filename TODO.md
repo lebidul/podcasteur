@@ -29,5 +29,11 @@
 - [x] thème clair
 - [x] icône dossier écrasé dans éditeur de segments
 - [ ] .exe + mac + linux
-- [ ] workflow manuel
+- [ ] workflow manuel (tout dans même tab ?)
 - [ ] transcription dans .exe
+- [ ] Persistence du thème choisi
+- [ ] Raccourcis clavier dans l'éditeur
+- [ ] Export multi-formats simultané
+- [ ] Prévisualisation waveform
+- [ ] Historique des découpages
+- [ ] Bouton mode débug (avec fichier .log)
