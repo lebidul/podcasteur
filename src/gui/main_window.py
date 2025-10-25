@@ -14,7 +14,7 @@ from src.gui.widgets import (
     PrimaryButton, SecondaryButton, DangerButton,
     SuccessButton, NeutralButton, StyledCheckBox,
     StyledComboBox, StyledSlider, StyledSpinBox,
-    StyledDoubleSpinBox, StyledComboBox
+    StyledDoubleSpinBox, StyledComboBox, StyledScrollArea
 )
 
 
@@ -307,7 +307,10 @@ class MainWindow(QMainWindow):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        return widget
+        # Wrapper dans scroll
+        scroll = StyledScrollArea()
+        scroll.setWidget(widget)
+        return scroll  # Retourner scroll au lieu de content_widget
 
     def _create_manual_tab(self):
         """Crée l'onglet workflow manuel"""

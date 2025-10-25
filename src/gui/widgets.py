@@ -3,7 +3,7 @@ Widgets personnalisés pour l'interface Podcasteur
 Boutons, checkboxes, dropdowns et sliders stylisés
 """
 
-from PyQt6.QtWidgets import QPushButton, QCheckBox, QComboBox, QSlider, QSpinBox, QDoubleSpinBox
+from PyQt6.QtWidgets import QPushButton, QCheckBox, QComboBox, QSlider, QSpinBox, QDoubleSpinBox, QScrollArea
 from PyQt6.QtCore import Qt
 
 
@@ -567,6 +567,89 @@ class StyledDoubleSpinBox(QDoubleSpinBox):
         """)
 
 
+
+
+class StyledScrollArea(QScrollArea):
+    """ScrollArea stylisée avec scrollbars modernes
+
+    Empêche le débordement de contenu avec scrollbars élégantes
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_style()
+        self._setup_properties()
+
+    def _setup_properties(self):
+        """Configure les propriétés par défaut"""
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+    def _setup_style(self):
+        """Configure le style des scrollbars"""
+        self.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            
+            /* Scrollbar verticale */
+            QScrollBar:vertical {
+                background-color: #f5f5f5;
+                width: 12px;
+                border-radius: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #4a90e2;
+                border-radius: 6px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #357abd;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background-color: #2d5d8f;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background-color: transparent;
+            }
+            
+            /* Scrollbar horizontale */
+            QScrollBar:horizontal {
+                background-color: #f5f5f5;
+                height: 12px;
+                border-radius: 6px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: #4a90e2;
+                border-radius: 6px;
+                min-width: 30px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: #357abd;
+            }
+            QScrollBar::handle:horizontal:pressed {
+                background-color: #2d5d8f;
+            }
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+            QScrollBar::add-page:horizontal,
+            QScrollBar::sub-page:horizontal {
+                background-color: transparent;
+            }
+        """)
+
+
 # ============== EXEMPLE D'UTILISATION ==============
 
 if __name__ == '__main__':
@@ -578,58 +661,61 @@ if __name__ == '__main__':
 
     window = QWidget()
     window.setWindowTitle("Démonstration des widgets Podcasteur")
-    window.setMinimumWidth(500)
+    window.setMinimumSize(500, 600)
+    window.setMaximumHeight(600)  # Forcer une hauteur pour montrer le scroll
 
-    layout = QVBoxLayout(window)
+    # Contenu principal (sera dans le scroll)
+    content_widget = QWidget()
+    content_layout = QVBoxLayout(content_widget)
 
     # === BOUTONS ===
-    layout.addWidget(QLabel("Boutons :"))
+    content_layout.addWidget(QLabel("Boutons :"))
     btn_primary = PrimaryButton("🚀 Lancer le workflow")
-    layout.addWidget(btn_primary)
+    content_layout.addWidget(btn_primary)
 
     btn_secondary = SecondaryButton("⚙️ Paramètres")
-    layout.addWidget(btn_secondary)
+    content_layout.addWidget(btn_secondary)
 
     btn_danger = DangerButton("🗑️ Supprimer tout")
-    layout.addWidget(btn_danger)
+    content_layout.addWidget(btn_danger)
 
     btn_success = SuccessButton("✅ Créer le podcast")
-    layout.addWidget(btn_success)
+    content_layout.addWidget(btn_success)
 
     btn_neutral = NeutralButton("📁 Parcourir")
-    layout.addWidget(btn_neutral)
+    content_layout.addWidget(btn_neutral)
 
     # === CHECKBOXES ===
-    layout.addWidget(QLabel("\nCheckboxes :"))
+    content_layout.addWidget(QLabel("\nCheckboxes :"))
     check1 = StyledCheckBox("Détecter les speakers")
     check1.setChecked(True)
-    layout.addWidget(check1)
+    content_layout.addWidget(check1)
 
     check2 = StyledCheckBox("Normaliser l'audio")
-    layout.addWidget(check2)
+    content_layout.addWidget(check2)
 
     # === COMBOBOX ===
-    layout.addWidget(QLabel("\nDropdown :"))
+    content_layout.addWidget(QLabel("\nDropdown :"))
     combo = StyledComboBox()
     combo.addItems(["informatif et dynamique", "détendu et conversationnel", "professionnel et concis"])
-    layout.addWidget(combo)
+    content_layout.addWidget(combo)
 
     # === SPINBOX ===
-    layout.addWidget(QLabel("\nSpinBox (nombre entier) :"))
+    content_layout.addWidget(QLabel("\nSpinBox (nombre entier) :"))
     spinbox = StyledSpinBox()
     spinbox.setRange(1, 10)
     spinbox.setValue(5)
-    layout.addWidget(spinbox)
+    content_layout.addWidget(spinbox)
 
-    layout.addWidget(QLabel("\nDoubleSpinBox (nombre décimal) :"))
+    content_layout.addWidget(QLabel("\nDoubleSpinBox (nombre décimal) :"))
     double_spinbox = StyledDoubleSpinBox()
     double_spinbox.setRange(0.0, 10.0)
     double_spinbox.setValue(2.5)
     double_spinbox.setSingleStep(0.5)
-    layout.addWidget(double_spinbox)
+    content_layout.addWidget(double_spinbox)
 
     # === SLIDER ===
-    layout.addWidget(QLabel("\nSlider :"))
+    content_layout.addWidget(QLabel("\nSlider :"))
     slider_layout = QHBoxLayout()
     slider = StyledSlider(Qt.Orientation.Horizontal)
     slider.setRange(0, 100)
@@ -640,9 +726,21 @@ if __name__ == '__main__':
     slider_layout.addWidget(slider)
     slider_layout.addWidget(slider_label)
     slider_layout.addStretch()
-    layout.addLayout(slider_layout)
+    content_layout.addLayout(slider_layout)
 
-    layout.addStretch()
+    # Ajouter du contenu supplémentaire pour forcer le scroll
+    content_layout.addWidget(QLabel("\n" + "=" * 50))
+    content_layout.addWidget(QLabel("⬇️ Scrollez pour voir plus de contenu"))
+    for i in range(5):
+        content_layout.addWidget(QLabel(f"Ligne de test {i+1}"))
+
+    content_layout.addStretch()
+
+    # === WRAPPER DANS SCROLLAREA ===
+    main_layout = QVBoxLayout(window)
+    scroll = StyledScrollArea()
+    scroll.setWidget(content_widget)
+    main_layout.addWidget(scroll)
 
     window.show()
     sys.exit(app.exec())
