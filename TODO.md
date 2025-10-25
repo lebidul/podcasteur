@@ -30,7 +30,7 @@
 - [x] icône dossier écrasé dans éditeur de segments
 - [ ] avoir un résumé de claude avant les suggestions
 - [ ] .exe + mac + linux
-- [ ] workflow manuel (tout dans même tab ?)
+- [x] workflow manuel (tout dans même tab ?)
 - [ ] transcription dans .exe
 - [ ] Persistence du thème choisi
 - [ ] Raccourcis clavier dans l'éditeur
