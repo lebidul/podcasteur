@@ -13,6 +13,7 @@ from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 from pathlib import Path
 import yaml
+import json
 import os
 import sys
 
@@ -35,6 +36,11 @@ class MainWindow(QMainWindow):
         self.transcription = None
         self.suggestions = None
         self.dark_mode = False  # Thème clair par défaut
+
+        # Workflow manuel via JSON
+        self.json_decoupage = None
+        self.json_segments = None
+        self.json_source_folder = None
 
         self.init_ui()
 
@@ -63,7 +69,7 @@ class MainWindow(QMainWindow):
         # Onglets
         tabs = QTabWidget()
         tabs.addTab(self._create_auto_tab(), "Workflow Automatique")
-        tabs.addTab(self._create_manual_tab(), "Workflow Manuel")
+        # tabs.addTab(self._create_manual_tab(), "Workflow Manuel")  # Désactivé
         tabs.addTab(self._create_config_tab(), "Configuration")
         layout.addWidget(tabs)
 
@@ -98,6 +104,47 @@ class MainWindow(QMainWindow):
         files_layout.addWidget(self.files_list)
         files_group.setLayout(files_layout)
         layout.addWidget(files_group)
+
+        # ──────────── OU ────────────
+        separator_layout = QHBoxLayout()
+        separator_left = QLabel("─" * 30)
+        separator_left.setStyleSheet("color: #888;")
+        separator_text = QLabel("OU")
+        separator_text.setStyleSheet("font-weight: bold; color: #555; padding: 0 10px;")
+        separator_right = QLabel("─" * 30)
+        separator_right.setStyleSheet("color: #888;")
+        separator_layout.addWidget(separator_left)
+        separator_layout.addWidget(separator_text)
+        separator_layout.addWidget(separator_right)
+        layout.addLayout(separator_layout)
+
+        # Import découpage JSON
+        json_group = QGroupBox("1b. Import découpage JSON (workflow manuel)")
+        json_layout = QVBoxLayout()
+
+        json_buttons_layout = QHBoxLayout()
+        btn_import_json = QPushButton("📁 Importer découpage JSON")
+        btn_import_json.clicked.connect(self._import_json_decoupage)
+        btn_import_json.setStyleSheet("padding: 8px; font-weight: bold;")
+        btn_clear_json = QPushButton("Effacer")
+        btn_clear_json.clicked.connect(self._clear_json_decoupage)
+
+        json_buttons_layout.addWidget(btn_import_json)
+        json_buttons_layout.addWidget(btn_clear_json)
+        json_buttons_layout.addStretch()
+
+        self.json_file_label = QLabel("Aucun fichier JSON importé")
+        self.json_file_label.setStyleSheet("font-style: italic; color: #666; padding: 5px;")
+
+        self.json_info_label = QLabel("")
+        self.json_info_label.setStyleSheet("color: #0066cc; padding: 5px;")
+
+        json_layout.addLayout(json_buttons_layout)
+        json_layout.addWidget(self.json_file_label)
+        json_layout.addWidget(self.json_info_label)
+        json_group.setLayout(json_layout)
+        layout.addWidget(json_group)
+
 
         # Options
         options_group = QGroupBox("2. Options")
@@ -244,7 +291,7 @@ class MainWindow(QMainWindow):
         # Bouton lancer
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        self.btn_start = QPushButton("🚀 Lancer le workflow automatique")
+        self.btn_start = QPushButton("🚀 Décollage")
         self.btn_start.setStyleSheet("padding: 10px; font-size: 14px; font-weight: bold;")
         self.btn_start.clicked.connect(self._start_auto_workflow)
         btn_layout.addWidget(self.btn_start)
@@ -475,9 +522,13 @@ class MainWindow(QMainWindow):
         # Déterminer le mode de fonctionnement
         mode_mix = self.use_mix_check.isChecked() and bool(self.mix_file_input.text())
         mode_trans = self.use_transcription_check.isChecked() and bool(self.transcription_file_input.text())
+        mode_json = bool(self.json_segments)  # Mode JSON
 
         # Validation
-        if not mode_mix and not self.fichiers_audio:
+        if mode_json:
+            # Mode JSON : pas besoin de fichiers audio
+            pass
+        elif not mode_mix and not self.fichiers_audio:
             QMessageBox.warning(self, "Aucun fichier",
                                 "Ajoutez des fichiers audio ou sélectionnez un fichier mix existant.")
             return
@@ -528,7 +579,33 @@ class MainWindow(QMainWindow):
             else:
                 # Faire la transcription
                 self._start_transcription()
-        else:
+
+        if mode_json:
+            self._log("🎬 Mode JSON : Chargement des segments depuis le fichier...")
+            self._log(f"   📄 Fichier : {Path(self.json_decoupage).name}")
+            self._log(f"   📊 {len(self.json_segments)} segments détectés\n")
+
+            # Définir un fichier_mix fictif (premier fichier source)
+            # Les segments ont déjà leurs chemins complets
+            if self.json_segments:
+                premier_fichier = Path(self.json_segments[0]['fichier'])
+                self.fichier_mix = premier_fichier
+                self._log(f"   📁 Dossier source : {self.json_source_folder}\n")
+
+            # Créer une suggestion artificielle à partir des segments JSON
+            suggestion_json = {
+                'titre': f"Découpage depuis {Path(self.json_decoupage).stem}",
+                'commentaire': 'Segments importés depuis fichier JSON',
+                'duree_estimee': sum(s['fin'] - s['debut'] for s in self.json_segments) / 60,
+                'segments': self.json_segments
+            }
+
+            # Stocker les suggestions et ouvrir le dialogue
+            self.suggestions = [suggestion_json]
+            self._show_suggestions_dialog()
+            return
+
+
             # Workflow classique avec concaténation
             self._log(f"\n📍 ÉTAPE 1/4 : Concaténation de {len(self.fichiers_audio)} fichiers")
             self._start_concatenation()
@@ -891,6 +968,170 @@ class MainWindow(QMainWindow):
         self.fichiers_audio.clear()
         self.files_list.clear()
         self._update_status()
+
+
+    def _import_json_decoupage(self):
+        """Importe un fichier de découpage JSON"""
+        fichier, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importer découpage JSON",
+            "",
+            "Fichiers JSON (*.json)"
+        )
+
+        if not fichier:
+            return
+
+        try:
+            # Charger le JSON
+            with open(fichier, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # Vérifier la structure
+            if 'segments' not in data:
+                QMessageBox.warning(
+                    self,
+                    "Format invalide",
+                    "Le fichier JSON doit contenir une clé 'segments'"
+                )
+                return
+
+            # Extraire les segments
+            segments = data['segments']
+            if not segments:
+                QMessageBox.warning(
+                    self,
+                    "Aucun segment",
+                    "Le fichier JSON ne contient aucun segment"
+                )
+                return
+
+            # Extraire les fichiers sources uniques (sans intro/outro)
+            fichiers_sources = set()
+            segments_valides = []
+
+            for seg in segments:
+                fichier_source = seg.get('fichier_source', '')
+
+                # Ignorer intro/outro (fichiers dans assets/)
+                if not fichier_source or 'assets/' in fichier_source.lower():
+                    continue
+
+                # Vérifier que le segment a des timestamps
+                debut = seg.get('debut_source')
+                fin = seg.get('fin_source')
+
+                if debut is not None and fin is not None:
+                    fichiers_sources.add(fichier_source)
+
+                    # Préparer le segment pour l'éditeur
+                    segments_valides.append({
+                        'debut': float(debut),
+                        'fin': float(fin),
+                        'fichier': fichier_source,
+                        'description': seg.get('description', '')
+                    })
+
+            if not segments_valides:
+                QMessageBox.warning(
+                    self,
+                    "Aucun segment valide",
+                    "Le fichier JSON ne contient aucun segment avec timestamps valides"
+                )
+                return
+
+            # Demander le dossier contenant les fichiers sources
+            dossier_source = QFileDialog.getExistingDirectory(
+                self,
+                "Sélectionner le dossier contenant les fichiers sources",
+                str(Path(fichier).parent)  # Démarrer dans le dossier du JSON
+            )
+
+            if not dossier_source:
+                QMessageBox.warning(
+                    self,
+                    "Dossier requis",
+                    "Vous devez sélectionner le dossier contenant les fichiers sources audio."
+                )
+                return
+
+            # Vérifier que les fichiers sources existent
+            dossier_path = Path(dossier_source)
+            fichiers_manquants = []
+
+            for nom_fichier in fichiers_sources:
+                chemin_complet = dossier_path / nom_fichier
+                if not chemin_complet.exists():
+                    fichiers_manquants.append(nom_fichier)
+
+            if fichiers_manquants:
+                reponse = QMessageBox.warning(
+                    self,
+                    "Fichiers manquants",
+                    f"Les fichiers suivants sont introuvables dans {dossier_source} :\n\n" +
+                    "\n".join(f"• {f}" for f in fichiers_manquants) +
+                    f"\n\nVoulez-vous continuer quand même ?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                if reponse != QMessageBox.StandardButton.Yes:
+                    return
+
+            # Mettre à jour les segments avec les chemins complets
+            for segment in segments_valides:
+                segment['fichier'] = str(dossier_path / segment['fichier'])
+
+            # Stocker les données
+            self.json_decoupage = fichier
+            self.json_segments = segments_valides
+            self.json_source_folder = dossier_source
+
+            # Mettre à jour l'affichage
+            self.json_file_label.setText(f"📄 {Path(fichier).name}")
+            self.json_info_label.setText(
+                f"ℹ️ {len(segments_valides)} segment(s) • "
+                f"{len(fichiers_sources)} fichier(s) source(s) détecté(s)"
+            )
+
+            # Vider la liste des fichiers audio (le JSON prend le dessus)
+            self.fichiers_audio = []
+            self.files_list.clear()
+
+            QMessageBox.information(
+                self,
+                "Import réussi",
+                f"Découpage JSON importé avec succès !\n\n"
+                f"• {len(segments_valides)} segments détectés\n"
+                f"• {len(fichiers_sources)} fichiers sources\n\n"
+                f"Le workflow passera directement à l'édition des segments."
+            )
+
+            self.statusBar().showMessage(
+                f"JSON importé : {len(segments_valides)} segments",
+                5000
+            )
+
+        except json.JSONDecodeError as e:
+            QMessageBox.critical(
+                self,
+                "Erreur de format",
+                f"Le fichier JSON est invalide :\n{str(e)}"
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erreur d'import",
+                f"Impossible d'importer le fichier :\n{str(e)}"
+            )
+
+    def _clear_json_decoupage(self):
+        """Efface le découpage JSON importé"""
+        self.json_decoupage = None
+        self.json_segments = None
+        self.json_source_folder = None
+        self.json_file_label.setText("Aucun fichier JSON importé")
+        self.json_info_label.setText("")
+        self.statusBar().showMessage("Découpage JSON effacé", 3000)
 
     def _toggle_mix_mode(self, state):
         """Active/désactive le mode mix"""

@@ -40,3 +40,5 @@
 - [ ] Bouton mode débug (avec fichier .log)
 - [ ] Exporter multiples suggestions
 - [ ] Exporter fichier suggestions et être capable d'en réutiliser un
+- [ ] Améliorer boutons
+- [ ] Rafectoriser main_window.py
