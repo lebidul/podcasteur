@@ -56,7 +56,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialise l'interface utilisateur"""
         self.setWindowTitle("Podcasteur v1.4.0 - Éditeur de podcasts IA")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(800, 550)
+        self.resize(900, 650)
 
         # Ajouter l'icône
         icon_path = self._get_icon_path()
@@ -107,7 +108,7 @@ class MainWindow(QMainWindow):
         files_buttons.addStretch()
 
         self.files_list = QListWidget()
-        self.files_list.setMaximumHeight(150)
+        self.files_list.setMaximumHeight(100)
 
         files_layout.addLayout(files_buttons)
         files_layout.addWidget(self.files_list)
