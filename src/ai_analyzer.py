@@ -62,7 +62,7 @@ class AIAnalyzer:
         # Appeler l'API Claude
         reponse = self.client.messages.create(
             model=self.config['modele'],
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=self.config['temperature'],
             messages=[{
                 "role": "user",
@@ -208,8 +208,32 @@ IMPORTANT: Ta réponse doit être au format JSON suivant (et UNIQUEMENT du JSON 
 
         except json.JSONDecodeError as e:
             print(f"❌ Erreur lors du parsing de la réponse Claude : {e}")
-            print(f"Texte de la réponse : {texte_reponse[:500]}...")
-            raise
+            print(f"Texte de la réponse (début) : {texte_reponse[:500]}...")
+            print(f"Texte de la réponse (fin) : ...{texte_reponse[-500:]}")
+
+            # Tentative de récupération : chercher un JSON partiel valide
+            try:
+                # Essayer de trouver le dernier objet complet
+                derniere_accolade = texte_json.rfind('}')
+                if derniere_accolade > 0:
+                    texte_json_tronque = texte_json[:derniere_accolade + 1]
+                    donnees = json.loads(texte_json_tronque)
+
+                    if isinstance(donnees, list):
+                        print(f"⚠️  JSON partiel récupéré : {len(donnees)} suggestions")
+                        return donnees
+
+                    suggestions = donnees.get('suggestions', [])
+                    print(f"⚠️  JSON partiel récupéré : {len(suggestions)} suggestions")
+                    return suggestions
+            except:
+                pass
+
+            raise ValueError(
+                f"Impossible de parser la réponse de Claude. "
+                f"La transcription est peut-être trop longue ({len(texte_reponse)} caractères). "
+                f"Essayez de réduire le nombre de segments ou la durée cible."
+            )
 
     @staticmethod
     def _formater_temps(secondes: float) -> str:

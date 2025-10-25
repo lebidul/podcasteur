@@ -588,12 +588,49 @@ class MainWindow(QMainWindow):
 
         try:
             import re
+            import csv
 
             with open(chemin_trans, 'r', encoding='utf-8') as f:
                 if chemin_trans.suffix == '.json':
                     import json
                     self.transcription = json.load(f)
-                else:
+                elif chemin_trans.suffix == '.csv':  # ← AJOUTER ce bloc elif complet
+                    # Format CSV : Start time,End time,Speaker tag,Transcript
+                    self._log("   📊 Détection du format CSV")
+
+                    csv_reader = csv.DictReader(f)
+                    segments = []
+                    texte_complet = []
+
+                    for row in csv_reader:
+                        try:
+                            debut = float(row['Start time'])
+                            fin = float(row['End time'])
+                            texte = row['Transcript'].strip()
+                            speaker = row.get('Speaker tag', '').strip()
+
+                            segment = {
+                                'debut': debut,
+                                'fin': fin,
+                                'texte': texte
+                            }
+
+                            # Ajouter speaker si présent
+                            if speaker:
+                                segment['speaker'] = speaker
+
+                            segments.append(segment)
+                            texte_complet.append(texte)
+                        except (ValueError, KeyError) as e:
+                            self._log(f"   ⚠️  Ligne CSV ignorée : {e}")
+                            continue
+
+                    self.transcription = {
+                        'texte': ' '.join(texte_complet),
+                        'langue': 'fr',
+                        'segments': segments
+                    }
+                else:  # ← CHANGER "else:" en "else:"
                     # Format texte avec timestamps : [MM:SS - MM:SS] texte
                     contenu = f.read()
 
@@ -742,8 +779,20 @@ class MainWindow(QMainWindow):
     def _show_suggestions_dialog(self):
         """Affiche le dialogue de sélection"""
         from src.gui.dialogs.suggestion_dialog import SuggestionsDialog
+        from ..ai_analyzer import AIAnalyzer
 
-        dialog = SuggestionsDialog(self.suggestions, self)
+        # Créer l'analyzer pour l'affinage
+        cle_api = os.getenv('ANTHROPIC_API_KEY')
+        analyzer = AIAnalyzer(self.config, cle_api) if cle_api else None
+
+        dialog = SuggestionsDialog(
+            self.suggestions,
+            self,
+            ai_analyzer=analyzer,
+            transcription=self.transcription,
+            duree_cible=self.duree_spin.value(),
+            ton=self.ton_combo.currentText()
+        )
 
         if dialog.exec():
             suggestion = dialog.get_suggestion()
@@ -878,7 +927,7 @@ class MainWindow(QMainWindow):
         """Parcourir un fichier de transcription"""
         file, _ = QFileDialog.getOpenFileName(
             self, "Sélectionner la transcription", "",
-            "Fichiers texte (*.txt *.json)"
+            "Fichiers transcription (*.txt *.json *.csv);;Tous les fichiers (*.*)"
         )
         if file:
             self.transcription_file_input.setText(file)

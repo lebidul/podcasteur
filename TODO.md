@@ -28,6 +28,7 @@
 - [x] étendre + intégrer onglet config
 - [x] thème clair
 - [x] icône dossier écrasé dans éditeur de segments
+- [ ] avoir un résumé de claude avant les suggestions
 - [ ] .exe + mac + linux
 - [ ] workflow manuel (tout dans même tab ?)
 - [ ] transcription dans .exe
@@ -37,3 +38,5 @@
 - [ ] Prévisualisation waveform
 - [ ] Historique des découpages
 - [ ] Bouton mode débug (avec fichier .log)
+- [ ] Exporter multiples suggestions
+- [ ] Exporter fichier suggestions et être capable d'en réutiliser un
