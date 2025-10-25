@@ -1,5 +1,100 @@
 # Notes de version - Podcasteur
 
+---
+
+## v1.5.1 - 2025-10-25
+
+### 🎵 Contrôles Audio Avancés - Amélioration de l'Éditeur
+
+Amélioration majeure de l'éditeur de segments avec des contrôles de navigation audio complets pour une expérience d'édition professionnelle.
+
+**Note importante** : Cette version améliore significativement l'expérience d'édition des segments en ajoutant des contrôles audio dignes d'un lecteur multimédia professionnel. Toutes les fonctionnalités existantes restent inchangées.
+
+### ✨ Nouvelles fonctionnalités
+
+#### Barre de contrôle audio complète
+- **Play/Pause centralisé** : Bouton unique pour contrôler la lecture du segment en cours
+  - Bascule automatique entre ▶️ Play et ⏸️ Pause
+  - État synchronisé avec le player
+  - Activation/désactivation automatique des contrôles
+- **Bouton Stop** : Arrêt complet et réinitialisation de la position
+- **Navigation temporelle** :
+  - ⏪ **Reculer de 5 secondes** : Saut arrière rapide pour réécouter un passage
+  - ⏩ **Avancer de 5 secondes** : Saut avant rapide pour passer un passage
+  - Limitation automatique aux bornes du segment (début/fin)
+- **Contrôle de volume intégré** :
+  - Slider horizontal 0-100%
+  - Affichage du pourcentage en temps réel
+  - Volume par défaut à 70%
+  - Volume conservé entre les segments
+
+#### Slider de position interactif
+- **Navigation par drag & drop** : Cliquez et déplacez pour aller à n'importe quelle position du segment
+- **Mise à jour en temps réel** : Le slider suit automatiquement la lecture (rafraîchissement 100ms)
+- **Affichage temporel** :
+  - Temps écoulé affiché à gauche (format MM:SS)
+  - Durée totale affichée à droite (format MM:SS)
+  - Mise à jour pendant le drag pour feedback instantané
+- **Précision** : Navigation au dixième de seconde près
+
+#### Affichage du contexte
+- **Label informatif du segment en cours** :
+  - Numéro du segment
+  - Description complète
+  - Plage temporelle (début → fin)
+  - Exemple : `🎵 Segment 1: Introduction (00:00 → 01:23)`
+- **Messages de statut** dans la barre d'état pour les actions en cours
+
+#### Interface optimisée
+- **Section dédiée** avec `QGroupBox` "🎵 Contrôles de lecture"
+- **Layout épuré** :
+  - Ligne 1 : Boutons de contrôle + volume
+  - Ligne 2 : Slider de position + temps
+  - Ligne 3 : Info segment en cours
+- **Hauteur de fenêtre ajustée** : 700px (vs 600px) pour accueillir les nouveaux contrôles
+- **Design cohérent** avec le reste de l'interface
+
+### 🔧 Améliorations techniques
+
+#### Gestion du player
+- **QTimer pour mise à jour** : Rafraîchissement automatique de la position toutes les 100ms
+- **Gestion intelligente du slider** :
+  - Flag `is_slider_pressed` pour éviter les conflits pendant le drag
+  - Synchronisation précise entre position du player et slider
+  - Feedback visuel pendant le déplacement
+- **Signaux Qt connectés** :
+  - `durationChanged` : Mise à jour de la durée totale
+  - `playbackStateChanged` : Synchronisation des états play/pause/stop
+  - `errorOccurred` : Gestion des erreurs de lecture
+- **Nettoyage des ressources** :
+  - Arrêt automatique du timer à la fermeture
+  - Conservation de la logique de nettoyage des fichiers temporaires
+
+#### Nouvelles méthodes
+- `_create_audio_controls()` : Construction de la barre de contrôle complète
+- `_toggle_play_pause()` : Gestion du play/pause centralisé
+- `_skip_backward()` : Saut arrière de 5 secondes
+- `_skip_forward()` : Saut avant de 5 secondes
+- `_change_volume()` : Ajustement du volume
+- `_update_position()` : Mise à jour automatique de la position
+- `_on_slider_pressed()` / `_on_slider_released()` / `_on_slider_moved()` : Gestion du drag
+- `_enable_audio_controls()` : Activation/désactivation des contrôles
+- `_on_duration_changed()` : Réception de la durée du média
+- `_format_time_ms()` : Formatage des millisecondes en MM:SS
+
+#### Améliorations des méthodes existantes
+- `_play_segment()` :
+  - Active automatiquement les contrôles
+  - Démarre le timer de mise à jour
+  - Affiche les informations du segment
+  - Définit le volume initial
+- `_stop_playback()` :
+  - Arrête le timer
+  - Réinitialise l'affichage (slider, temps, label)
+  - Désactive les contrôles
+- `closeEvent()` :
+  - Arrête proprement le timer avant fermeture
+
 # v1.5.0 - 2025-01-06
 
 ## 🎉 Interface Graphique - Première Release GUI

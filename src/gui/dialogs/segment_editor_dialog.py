@@ -1,5 +1,6 @@
 """
 Éditeur interactif de segments avant montage final
+Version améliorée avec contrôles audio avancés
 """
 
 from PyQt6.QtWidgets import (
@@ -7,9 +8,10 @@ from PyQt6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QMessageBox,
     QTimeEdit, QLineEdit, QSpinBox, QWidget,
-    QDialogButtonBox, QFileDialog, QFormLayout, QStatusBar
+    QDialogButtonBox, QFileDialog, QFormLayout, QStatusBar,
+    QSlider, QGroupBox
 )
-from PyQt6.QtCore import Qt, QTime, QUrl
+from PyQt6.QtCore import Qt, QTime, QUrl, QTimer
 from PyQt6.QtGui import QColor
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from pydub import AudioSegment
@@ -33,12 +35,18 @@ class SegmentEditorDialog(QDialog):
         self.current_playing_row = -1
         self.temp_audio_files = []  # Pour nettoyer les fichiers temporaires
 
+        # Nouveaux attributs pour les contrôles audio
+        self.segment_duration = 0  # Durée du segment en cours (ms)
+        self.position_update_timer = QTimer()
+        self.position_update_timer.timeout.connect(self._update_position)
+        self.is_slider_pressed = False  # Pour éviter les conflits lors du drag
+
         self.init_ui()
 
     def init_ui(self):
         """Initialise l'interface"""
         self.setWindowTitle(f"✂️ Éditeur de segments - {self.suggestion['titre']}")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(900, 700)  # Augmenté pour les contrôles audio
 
         layout = QVBoxLayout(self)
 
@@ -65,12 +73,12 @@ class SegmentEditorDialog(QDialog):
         # Configuration du tableau
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)  # Bouton play
-        self.table.setColumnWidth(0, 45)  # ← CHANGÉ : 45 au lieu de 50
+        self.table.setColumnWidth(0, 45)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)  # ← CHANGÉ : Stretch au lieu de Interactive
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)  # ← CHANGÉ : Stretch au lieu de Stretch (ok)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
 
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -80,6 +88,10 @@ class SegmentEditorDialog(QDialog):
         )
 
         layout.addWidget(self.table)
+
+        # ========== NOUVEAUX CONTRÔLES AUDIO ==========
+        self._create_audio_controls(layout)
+        # =============================================
 
         # Boutons d'action sur les segments
         segment_buttons = QHBoxLayout()
@@ -136,6 +148,175 @@ class SegmentEditorDialog(QDialog):
         # Remplir le tableau
         self._populate_table()
 
+    def _create_audio_controls(self, parent_layout):
+        """Crée la barre de contrôles audio avancés"""
+        audio_group = QGroupBox("🎵 Contrôles de lecture")
+        audio_layout = QVBoxLayout()
+
+        # Ligne 1 : Boutons de contrôle
+        controls_layout = QHBoxLayout()
+
+        # Bouton Play/Pause principal
+        self.btn_play_pause = QPushButton("▶️ Play")
+        self.btn_play_pause.setMinimumWidth(100)
+        self.btn_play_pause.clicked.connect(self._toggle_play_pause)
+        self.btn_play_pause.setEnabled(False)
+        controls_layout.addWidget(self.btn_play_pause)
+
+        # Bouton Stop
+        self.btn_stop = QPushButton("⏹️ Stop")
+        self.btn_stop.clicked.connect(self._stop_playback)
+        self.btn_stop.setEnabled(False)
+        controls_layout.addWidget(self.btn_stop)
+
+        controls_layout.addSpacing(20)
+
+        # Bouton Reculer -5s
+        self.btn_backward = QPushButton("⏪ -5s")
+        self.btn_backward.clicked.connect(self._skip_backward)
+        self.btn_backward.setEnabled(False)
+        controls_layout.addWidget(self.btn_backward)
+
+        # Bouton Avancer +5s
+        self.btn_forward = QPushButton("⏩ +5s")
+        self.btn_forward.clicked.connect(self._skip_forward)
+        self.btn_forward.setEnabled(False)
+        controls_layout.addWidget(self.btn_forward)
+
+        controls_layout.addSpacing(20)
+
+        # Contrôle de volume
+        volume_label = QLabel("🔊 Volume:")
+        controls_layout.addWidget(volume_label)
+
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(70)
+        self.volume_slider.setMaximumWidth(150)
+        self.volume_slider.valueChanged.connect(self._change_volume)
+        controls_layout.addWidget(self.volume_slider)
+
+        self.volume_label = QLabel("70%")
+        self.volume_label.setMinimumWidth(40)
+        controls_layout.addWidget(self.volume_label)
+
+        controls_layout.addStretch()
+
+        audio_layout.addLayout(controls_layout)
+
+        # Ligne 2 : Slider de position + temps
+        position_layout = QHBoxLayout()
+
+        # Temps écoulé
+        self.time_label = QLabel("00:00")
+        self.time_label.setMinimumWidth(50)
+        position_layout.addWidget(self.time_label)
+
+        # Slider de position
+        self.position_slider = QSlider(Qt.Orientation.Horizontal)
+        self.position_slider.setRange(0, 1000)  # On utilisera des millièmes
+        self.position_slider.setValue(0)
+        self.position_slider.sliderPressed.connect(self._on_slider_pressed)
+        self.position_slider.sliderReleased.connect(self._on_slider_released)
+        self.position_slider.sliderMoved.connect(self._on_slider_moved)
+        position_layout.addWidget(self.position_slider)
+
+        # Temps total
+        self.duration_label = QLabel("00:00")
+        self.duration_label.setMinimumWidth(50)
+        position_layout.addWidget(self.duration_label)
+
+        audio_layout.addLayout(position_layout)
+
+        # Info segment en cours
+        self.current_segment_label = QLabel("Aucun segment en lecture")
+        self.current_segment_label.setStyleSheet("color: #666; font-style: italic; padding: 5px;")
+        audio_layout.addWidget(self.current_segment_label)
+
+        audio_group.setLayout(audio_layout)
+        parent_layout.addWidget(audio_group)
+
+    def _toggle_play_pause(self):
+        """Gère le bouton Play/Pause principal"""
+        if not self.audio_player:
+            return
+
+        if self.audio_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.audio_player.pause()
+            self.btn_play_pause.setText("▶️ Play")
+            self.position_update_timer.stop()
+        else:
+            self.audio_player.play()
+            self.btn_play_pause.setText("⏸️ Pause")
+            self.position_update_timer.start(100)  # Mise à jour toutes les 100ms
+
+    def _skip_backward(self):
+        """Recule de 5 secondes"""
+        if self.audio_player:
+            current_pos = self.audio_player.position()
+            new_pos = max(0, current_pos - 5000)  # -5000ms
+            self.audio_player.setPosition(new_pos)
+
+    def _skip_forward(self):
+        """Avance de 5 secondes"""
+        if self.audio_player:
+            current_pos = self.audio_player.position()
+            duration = self.audio_player.duration()
+            new_pos = min(duration, current_pos + 5000)  # +5000ms
+            self.audio_player.setPosition(new_pos)
+
+    def _change_volume(self, value):
+        """Change le volume"""
+        if self.audio_output:
+            self.audio_output.setVolume(value / 100.0)
+        self.volume_label.setText(f"{value}%")
+
+    def _update_position(self):
+        """Met à jour l'affichage de la position"""
+        if not self.audio_player or self.is_slider_pressed:
+            return
+
+        position = self.audio_player.position()
+        duration = self.audio_player.duration()
+
+        if duration > 0:
+            # Mettre à jour le slider
+            slider_position = int((position / duration) * 1000)
+            self.position_slider.setValue(slider_position)
+
+            # Mettre à jour les labels de temps
+            self.time_label.setText(self._format_time_ms(position))
+            self.duration_label.setText(self._format_time_ms(duration))
+
+    def _on_slider_pressed(self):
+        """Appelé quand l'utilisateur commence à drag le slider"""
+        self.is_slider_pressed = True
+
+    def _on_slider_released(self):
+        """Appelé quand l'utilisateur relâche le slider"""
+        self.is_slider_pressed = False
+        if self.audio_player:
+            duration = self.audio_player.duration()
+            if duration > 0:
+                new_position = int((self.position_slider.value() / 1000) * duration)
+                self.audio_player.setPosition(new_position)
+
+    def _on_slider_moved(self, value):
+        """Appelé pendant le drag du slider"""
+        if self.audio_player:
+            duration = self.audio_player.duration()
+            if duration > 0:
+                position = int((value / 1000) * duration)
+                self.time_label.setText(self._format_time_ms(position))
+
+    @staticmethod
+    def _format_time_ms(milliseconds):
+        """Formate les millisecondes en MM:SS"""
+        seconds = int(milliseconds / 1000)
+        minutes = seconds // 60
+        seconds = seconds % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
     def _populate_table(self):
         """Remplit le tableau avec les segments"""
         self.table.setRowCount(len(self.segments))
@@ -143,8 +324,8 @@ class SegmentEditorDialog(QDialog):
         for i, seg in enumerate(self.segments):
             # Colonne 0 : Bouton play
             play_btn = QPushButton("▶️")
-            play_btn.setMaximumWidth(35)  # ← CHANGÉ : 35 au lieu de 40
-            play_btn.setMaximumHeight(25)  # ← AJOUTÉ
+            play_btn.setMaximumWidth(35)
+            play_btn.setMaximumHeight(25)
             play_btn.setProperty('row', i)
             play_btn.clicked.connect(self._play_segment)
             play_btn.setToolTip("Écouter ce segment")
@@ -178,8 +359,8 @@ class SegmentEditorDialog(QDialog):
             fichier_edit.setProperty('row', i)
 
             fichier_btn = QPushButton("📁")
-            fichier_btn.setMaximumWidth(35)  # ← CHANGÉ : 35 au lieu de 30
-            fichier_btn.setMaximumHeight(25)  # ← AJOUTÉ
+            fichier_btn.setMaximumWidth(35)
+            fichier_btn.setMaximumHeight(25)
             fichier_btn.setProperty('row', i)
             fichier_btn.clicked.connect(self._browse_fichier_source)
 
@@ -234,9 +415,9 @@ class SegmentEditorDialog(QDialog):
                 return
 
         try:
-            # Si déjà en train de jouer ce segment, arrêter
+            # Si déjà en train de jouer ce segment, pause/play
             if self.current_playing_row == row and self.audio_player and self.audio_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-                self._stop_playback()
+                self._toggle_play_pause()
                 return
 
             # Arrêter toute lecture en cours
@@ -272,10 +453,26 @@ class SegmentEditorDialog(QDialog):
                 # Connecter les signaux
                 self.audio_player.playbackStateChanged.connect(self._on_playback_state_changed)
                 self.audio_player.errorOccurred.connect(self._on_player_error)
+                self.audio_player.durationChanged.connect(self._on_duration_changed)
+
+            # Définir le volume initial
+            self.audio_output.setVolume(self.volume_slider.value() / 100.0)
 
             # Charger et jouer
             self.audio_player.setSource(QUrl.fromLocalFile(temp_path))
             self.audio_player.play()
+
+            # Activer les contrôles
+            self._enable_audio_controls(True)
+
+            # Démarrer le timer de mise à jour
+            self.position_update_timer.start(100)
+
+            # Mettre à jour le label du segment en cours
+            self.current_segment_label.setText(
+                f"🎵 Segment {row + 1}: {segment.get('description', 'Sans titre')} "
+                f"({self._formater_temps(segment['debut'])} → {self._formater_temps(segment['fin'])})"
+            )
 
             self.status_bar.showMessage(f"▶️ Lecture du segment {row + 1}...", 3000)
 
@@ -287,14 +484,41 @@ class SegmentEditorDialog(QDialog):
             )
             self._reset_play_button(row)
 
+    def _enable_audio_controls(self, enable):
+        """Active/désactive les contrôles audio"""
+        self.btn_play_pause.setEnabled(enable)
+        self.btn_stop.setEnabled(enable)
+        self.btn_backward.setEnabled(enable)
+        self.btn_forward.setEnabled(enable)
+
+        if enable:
+            self.btn_play_pause.setText("⏸️ Pause")
+        else:
+            self.btn_play_pause.setText("▶️ Play")
+
+    def _on_duration_changed(self, duration):
+        """Appelé quand la durée du média est connue"""
+        self.segment_duration = duration
+        self.duration_label.setText(self._format_time_ms(duration))
+
     def _stop_playback(self):
         """Arrête la lecture en cours"""
         if self.audio_player:
             self.audio_player.stop()
+            self.position_update_timer.stop()
 
         if self.current_playing_row >= 0:
             self._reset_play_button(self.current_playing_row)
             self.current_playing_row = -1
+
+        # Réinitialiser l'affichage
+        self.position_slider.setValue(0)
+        self.time_label.setText("00:00")
+        self.duration_label.setText("00:00")
+        self.current_segment_label.setText("Aucun segment en lecture")
+
+        # Désactiver les contrôles
+        self._enable_audio_controls(False)
 
     def _reset_play_button(self, row):
         """Remet le bouton play à son état initial"""
@@ -312,6 +536,16 @@ class SegmentEditorDialog(QDialog):
                 self.current_playing_row = -1
                 self.status_bar.showMessage("⏹️ Lecture terminée", 2000)
 
+            self.position_update_timer.stop()
+            self._enable_audio_controls(False)
+            self.current_segment_label.setText("Aucun segment en lecture")
+
+        elif state == QMediaPlayer.PlaybackState.PlayingState:
+            self.btn_play_pause.setText("⏸️ Pause")
+
+        elif state == QMediaPlayer.PlaybackState.PausedState:
+            self.btn_play_pause.setText("▶️ Play")
+
     def _on_player_error(self, error, error_string):
         """Gère les erreurs du player"""
         QMessageBox.warning(
@@ -327,6 +561,9 @@ class SegmentEditorDialog(QDialog):
         """Nettoie les ressources avant fermeture"""
         # Arrêter la lecture
         self._stop_playback()
+
+        # Arrêter le timer
+        self.position_update_timer.stop()
 
         # Supprimer les fichiers temporaires
         for temp_file in self.temp_audio_files:
@@ -523,6 +760,10 @@ class SegmentEditorDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
+            # Si c'est le segment en cours de lecture, arrêter
+            if self.current_playing_row == current_row:
+                self._stop_playback()
+
             del self.segments[current_row]
             self._populate_table()
 
@@ -561,6 +802,10 @@ class SegmentEditorDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
+            # Arrêter la lecture si en cours
+            if self.current_playing_row >= 0:
+                self._stop_playback()
+
             self.segments = [seg.copy() for seg in self.suggestion['segments']]
             self._populate_table()
 
