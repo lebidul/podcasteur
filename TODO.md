@@ -30,7 +30,7 @@
 - [x] icône dossier écrasé dans éditeur de segments
 - [ ] avoir un résumé de claude avant les suggestions
 - [ ] .exe + mac + linux
-- [ ] workflow manuel (tout dans même tab ?)
+- [x] workflow manuel (tout dans même tab ?)
 - [ ] transcription dans .exe
 - [ ] Persistence du thème choisi
 - [ ] Raccourcis clavier dans l'éditeur
@@ -40,3 +40,6 @@
 - [ ] Bouton mode débug (avec fichier .log)
 - [ ] Exporter multiples suggestions
 - [ ] Exporter fichier suggestions et être capable d'en réutiliser un
+- [ ] Améliorer boutons
+- [ ] Rafectoriser main_window.py
+- [ ] Release Notes accessibles depuis HUI
