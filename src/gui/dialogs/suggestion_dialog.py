@@ -7,6 +7,15 @@ from PyQt6.QtWidgets import (
     QPushButton, QScrollArea, QWidget, QGroupBox,
     QRadioButton, QButtonGroup, QTextEdit, QMessageBox
 )
+
+from src.gui.widgets import (
+    PrimaryButton, SecondaryButton, DangerButton,
+    SuccessButton, NeutralButton, StyledCheckBox,
+    StyledComboBox, StyledSlider, StyledSpinBox,
+    StyledDoubleSpinBox, StyledComboBox
+)
+
+
 from PyQt6.QtCore import Qt
 
 
@@ -56,35 +65,35 @@ class SuggestionsDialog(QDialog):
         # Boutons d'action
         buttons_layout = QHBoxLayout()
 
-        btn_refine = QPushButton("🔄 Affiner avec feedback")
+        btn_refine = SecondaryButton("🔄 Affiner avec feedback")
         btn_refine.clicked.connect(self._affiner_suggestions)
 
-        btn_custom = QPushButton("✏️ Découpage personnalisé")
+        btn_custom = SecondaryButton("✏️ Découpage personnalisé")
         btn_custom.clicked.connect(self._decoupage_perso)
 
-        btn_cancel = QPushButton("Annuler")
+        btn_cancel = DangerButton("Annuler")
         btn_cancel.clicked.connect(self.reject)
 
-        btn_ok = QPushButton("✅ Monter cette suggestion")
+        btn_ok = SuccessButton("✅ Monter cette suggestion")
         btn_ok.setDefault(True)
         btn_ok.clicked.connect(self._valider_selection)
         btn_ok.setStyleSheet("padding: 8px; font-weight: bold;")
 
         buttons_layout = QHBoxLayout()
 
-        btn_import = QPushButton("📁 Importer JSON")
+        btn_import = NeutralButton("📁 Importer JSON")
         btn_import.clicked.connect(self._importer_json)
 
-        btn_refine = QPushButton("🔄 Affiner avec feedback")
+        btn_refine = SecondaryButton("🔄 Affiner avec feedback")
         btn_refine.clicked.connect(self._affiner_suggestions)
 
-        btn_custom = QPushButton("✏️ Découpage personnalisé")
+        btn_custom = SecondaryButton("✏️ Découpage personnalisé")
         btn_custom.clicked.connect(self._decoupage_perso)
 
-        btn_cancel = QPushButton("Annuler")
+        btn_cancel = DangerButton("Annuler")
         btn_cancel.clicked.connect(self.reject)
 
-        btn_ok = QPushButton("✅ Monter cette suggestion")
+        btn_ok = SuccessButton("✅ Monter cette suggestion")
         btn_ok.setDefault(True)
         btn_ok.clicked.connect(self._valider_selection)
         btn_ok.setStyleSheet("padding: 8px; font-weight: bold;")

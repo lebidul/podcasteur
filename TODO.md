@@ -42,4 +42,5 @@
 - [ ] Exporter fichier suggestions et être capable d'en réutiliser un
 - [ ] Améliorer boutons
 - [ ] Rafectoriser main_window.py
-- [ ] Release Notes accessibles depuis HUI
+- [ ] Release Notes accessibles depuis UI
+- [ ] Interruption workflow

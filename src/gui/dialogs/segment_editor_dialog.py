@@ -11,6 +11,14 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox, QFileDialog, QFormLayout, QStatusBar,
     QSlider, QGroupBox
 )
+
+from src.gui.widgets import (
+    PrimaryButton, SecondaryButton, DangerButton,
+    SuccessButton, NeutralButton, StyledCheckBox,
+    StyledComboBox, StyledSlider, StyledSpinBox,
+    StyledDoubleSpinBox, StyledComboBox
+)
+
 from PyQt6.QtCore import Qt, QTime, QUrl, QTimer
 from PyQt6.QtGui import QColor
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -96,19 +104,19 @@ class SegmentEditorDialog(QDialog):
         # Boutons d'action sur les segments
         segment_buttons = QHBoxLayout()
 
-        btn_add = QPushButton("➕ Ajouter segment")
+        btn_add = SecondaryButton("➕ Ajouter segment")
         btn_add.clicked.connect(self._add_segment)
 
-        btn_edit = QPushButton("✏️ Modifier segment")
+        btn_edit = SecondaryButton("✏️ Modifier segment")
         btn_edit.clicked.connect(self._edit_segment)
 
-        btn_delete = QPushButton("🗑️ Supprimer segment")
+        btn_delete = DangerButton("🗑️ Supprimer segment")
         btn_delete.clicked.connect(self._delete_segment)
 
-        btn_up = QPushButton("⬆️ Monter")
+        btn_up = SecondaryButton("⬆️ Monter")
         btn_up.clicked.connect(self._move_up)
 
-        btn_down = QPushButton("⬇️ Descendre")
+        btn_down = SecondaryButton("⬇️ Descendre")
         btn_down.clicked.connect(self._move_down)
 
         segment_buttons.addWidget(btn_add)
@@ -127,13 +135,13 @@ class SegmentEditorDialog(QDialog):
         # Boutons de validation
         buttons_layout = QHBoxLayout()
 
-        btn_reset = QPushButton("🔄 Réinitialiser")
+        btn_reset = SecondaryButton("🔄 Réinitialiser")
         btn_reset.clicked.connect(self._reset_segments)
 
-        btn_cancel = QPushButton("Annuler")
+        btn_cancel = DangerButton("Annuler")
         btn_cancel.clicked.connect(self.reject)
 
-        btn_ok = QPushButton("✅ Créer le podcast")
+        btn_ok = SuccessButton("✅ Créer le podcast")
         btn_ok.setDefault(True)
         btn_ok.clicked.connect(self._validate_and_accept)
         btn_ok.setStyleSheet("padding: 8px; font-weight: bold; background-color: #4CAF50; color: white;")
@@ -157,14 +165,14 @@ class SegmentEditorDialog(QDialog):
         controls_layout = QHBoxLayout()
 
         # Bouton Play/Pause principal
-        self.btn_play_pause = QPushButton("▶️ Play")
+        self.btn_play_pause = PrimaryButton("▶️ Play")
         self.btn_play_pause.setMinimumWidth(100)
         self.btn_play_pause.clicked.connect(self._toggle_play_pause)
         self.btn_play_pause.setEnabled(False)
         controls_layout.addWidget(self.btn_play_pause)
 
         # Bouton Stop
-        self.btn_stop = QPushButton("⏹️ Stop")
+        self.btn_stop = SecondaryButton("⏹️ Stop")
         self.btn_stop.clicked.connect(self._stop_playback)
         self.btn_stop.setEnabled(False)
         controls_layout.addWidget(self.btn_stop)
@@ -172,13 +180,13 @@ class SegmentEditorDialog(QDialog):
         controls_layout.addSpacing(20)
 
         # Bouton Reculer -5s
-        self.btn_backward = QPushButton("⏪ -5s")
+        self.btn_backward = NeutralButton("⏪ -5s")
         self.btn_backward.clicked.connect(self._skip_backward)
         self.btn_backward.setEnabled(False)
         controls_layout.addWidget(self.btn_backward)
 
         # Bouton Avancer +5s
-        self.btn_forward = QPushButton("⏩ +5s")
+        self.btn_forward = NeutralButton("⏩ +5s")
         self.btn_forward.clicked.connect(self._skip_forward)
         self.btn_forward.setEnabled(False)
         controls_layout.addWidget(self.btn_forward)
@@ -189,7 +197,7 @@ class SegmentEditorDialog(QDialog):
         volume_label = QLabel("🔊 Volume:")
         controls_layout.addWidget(volume_label)
 
-        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider = StyledSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(70)
         self.volume_slider.setMaximumWidth(150)
@@ -213,7 +221,7 @@ class SegmentEditorDialog(QDialog):
         position_layout.addWidget(self.time_label)
 
         # Slider de position
-        self.position_slider = QSlider(Qt.Orientation.Horizontal)
+        self.position_slider = StyledSlider(Qt.Orientation.Horizontal)
         self.position_slider.setRange(0, 1000)  # On utilisera des millièmes
         self.position_slider.setValue(0)
         self.position_slider.sliderPressed.connect(self._on_slider_pressed)
@@ -358,7 +366,7 @@ class SegmentEditorDialog(QDialog):
             fichier_edit = QLineEdit(seg.get('fichier', 'mix_complet.wav'))
             fichier_edit.setProperty('row', i)
 
-            fichier_btn = QPushButton("📁")
+            fichier_btn = NeutralButton("📁")
             fichier_btn.setMaximumWidth(35)
             fichier_btn.setMaximumHeight(25)
             fichier_btn.setProperty('row', i)
@@ -619,7 +627,7 @@ class SegmentEditorDialog(QDialog):
             fichier_defaut = self.segments[0].get('fichier', 'mix_complet.wav')
 
         fichier_edit = QLineEdit(fichier_defaut)
-        fichier_btn = QPushButton("📁")
+        fichier_btn = NeutralButton("📁")
 
         def browse_file():
             file, _ = QFileDialog.getOpenFileName(
@@ -696,7 +704,7 @@ class SegmentEditorDialog(QDialog):
         # Fichier source avec bouton parcourir
         fichier_layout = QHBoxLayout()
         fichier_edit = QLineEdit(segment.get('fichier', 'mix_complet.wav'))
-        fichier_btn = QPushButton("📁")
+        fichier_btn = NeutralButton("📁")
 
         def browse_file():
             file, _ = QFileDialog.getOpenFileName(
