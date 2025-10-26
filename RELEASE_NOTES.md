@@ -1,5 +1,196 @@
 # Notes de version - Podcasteur
 
+## v1.5.3 - 2025-10-26
+
+### 🎨 Amélioration de l'interface utilisateur
+
+Refonte visuelle de l'interface graphique avec des boutons stylisés professionnels et une meilleure gestion de l'espace pour les petits écrans.
+
+### ✨ Nouvelles fonctionnalités
+
+#### Système de boutons stylisés
+
+Introduction d'une hiérarchie visuelle claire avec 5 types de boutons différenciés :
+
+- **PrimaryButton (Bleu)** : Actions principales importantes
+  - Exemple : "🚀 Lancer le workflow"
+  - Style : Fond bleu vif (#4a90e2), texte blanc, en gras
+  - Utilisation : Une seule action principale par zone
+
+- **SuccessButton (Vert)** : Validations finales et créations
+  - Exemple : "✅ Créer le podcast"
+  - Style : Fond vert (#4CAF50), texte blanc, en gras
+  - Utilisation : Confirmation finale d'un processus
+
+- **SecondaryButton (Bordure bleue)** : Actions secondaires
+  - Exemple : "Annuler", "⚙️ Paramètres"
+  - Style : Fond transparent, bordure bleue (#4a90e2)
+  - Utilisation : Actions optionnelles ou moins prioritaires
+
+- **DangerButton (Rouge)** : Actions destructives
+  - Exemple : "🗑️ Supprimer", "Effacer tout"
+  - Style : Fond rouge (#f44336), texte blanc
+  - Utilisation : Actions irréversibles nécessitant attention
+
+- **NeutralButton (Gris)** : Actions standard
+  - Exemple : "📁 Parcourir", "Ajouter fichier"
+  - Style : Fond gris clair (#f5f5f5), bordure grise
+  - Utilisation : Actions neutres courantes
+
+**Avantages** :
+- ✅ Guidage visuel immédiat de l'utilisateur
+- ✅ Réduction des erreurs (actions dangereuses bien signalées)
+- ✅ Interface professionnelle et moderne
+- ✅ Code plus propre (plus de styles CSS éparpillés)
+
+#### ScrollArea stylisée
+
+- **StyledScrollArea** : Gestion automatique du débordement de contenu
+  - Scrollbars modernes et élégantes (12px, bleues #4a90e2)
+  - Apparition automatique si le contenu dépasse
+  - Hover/pressed states fluides
+  - Améliore l'expérience sur petits écrans
+
+### 🔧 Améliorations techniques
+
+#### Module widgets.py
+
+Nouveau module `src/gui/widgets.py` contenant les classes réutilisables :
+```python
+from src.gui.widgets import (
+    PrimaryButton, SecondaryButton, DangerButton,
+    SuccessButton, NeutralButton, StyledScrollArea
+)
+```
+
+**Architecture** :
+- Classes héritant de QPushButton/QScrollArea
+- Styles CSS embarqués (pas de fichiers externes)
+- États gérés automatiquement (hover, pressed, disabled)
+- Taille du module : ~10 KB
+
+#### Responsivité améliorée
+
+- **Taille minimale réduite** : 1000x700 → 800x550
+  - Utilisable sur écrans 15 pouces sans plein écran
+  - Taille par défaut : 900x650
+  
+- **Liste fichiers compacte** : Hauteur maximale réduite de 150px → 100px
+
+- **Gestion du débordement** : Scrollarea automatique pour sections trop longues
+
+#### Interface cohérente
+
+- **Hiérarchie visuelle** appliquée dans toute l'application :
+  - Workflow automatique : Bouton principal en bleu
+  - Actions d'édition : Boutons secondaires (bordure)
+  - Suppressions : Boutons rouges
+  - Parcourir/Ajouter : Boutons neutres gris
+
+- **Transitions fluides** : Tous les boutons ont des états hover/pressed
+
+### 📋 Compatibilité
+
+**Rétrocompatibilité totale** :
+- ✅ Tous les workflows existants inchangés
+- ✅ Pas de nouvelle dépendance Python
+- ✅ Format de fichiers identique
+- ✅ Configuration YAML inchangée
+- ✅ Raccourcis clavier préservés
+
+**Impact sur le build** :
+- 🟢 Taille : +10 KB (~0.003% sur 330 MB)
+- 🟢 Performance : Aucun impact (CSS inline)
+- 🟢 Mémoire : Négligeable
+
+### 🎯 Utilisation
+
+Les nouveaux boutons sont automatiquement appliqués dans toute l'interface. Aucune action requise de l'utilisateur.
+
+**Exemples de hiérarchie visuelle** :
+
+Section "Fichiers audio" :
+- "Ajouter fichiers" → Neutre (gris)
+- "Ajouter dossier" → Neutre (gris)
+- "Effacer tout" → Danger (rouge)
+
+Section "Workflow" :
+- "🚀 Lancer tout le workflow" → Principal (bleu)
+- "1️⃣ Concaténer" → Secondaire (bordure)
+- "2️⃣ Transcrire" → Secondaire (bordure)
+- "3️⃣ Analyser avec IA" → Secondaire (bordure)
+
+Éditeur de segments :
+- "➕ Ajouter segment" → Secondaire (bordure)
+- "✏️ Modifier segment" → Secondaire (bordure)
+- "🗑️ Supprimer segment" → Danger (rouge)
+- "🔄 Réinitialiser" → Danger (rouge)
+- "Annuler" → Secondaire (bordure)
+- "✅ Créer le podcast" → Succès (vert)
+
+### 🔄 Migration depuis v1.5.2
+
+**Aucune action requise** :
+```bash
+# Mise à jour simple
+pip install --upgrade podcasteur
+
+# OU pour l'exécutable Windows
+# Télécharger Podcasteur-GUI-Windows-v1.5.3.zip
+```
+
+**Changements visibles** :
+- ✅ Nouveaux styles de boutons colorés
+- ✅ Fenêtre utilisable sur petits écrans (800x550 minimum)
+- ✅ Scrollbar moderne si contenu dépasse
+
+**Workflows existants** :
+- ✅ Aucun changement fonctionnel
+- ✅ Tous les raccourcis clavier identiques
+- ✅ Comportements inchangés
+
+### 📊 Performances
+
+**Impact nul** :
+- 🟢 Rendu : CSS natif PyQt6 (aucun overhead)
+- 🟢 Mémoire : +10 KB pour les classes de widgets
+- 🟢 Temps de démarrage : Identique
+- 🟢 Responsive : Amélioration sur petits écrans
+
+### 📦 Distribution
+
+**Windows (Exécutable)** :
+- Téléchargez `Podcasteur-GUI-Windows-v1.5.3.zip`
+- Taille : ~330 MB (identique v1.5.2)
+- Double-clic sur `Podcasteur.exe`
+
+**Autres plateformes (Source)** :
+```bash
+pip install podcasteur==1.5.3
+python src/gui/main.py
+```
+
+### 📝 Notes techniques
+
+**Fichiers modifiés** :
+- `src/gui/widgets.py` : Nouveau fichier (+300 lignes)
+- `src/gui/main_window.py` : Imports et utilisation des nouveaux boutons
+- `src/gui/dialogs/segment_editor_dialog.py` : Boutons stylisés
+- `src/gui/dialogs/suggestion_dialog.py` : Boutons stylisés
+
+**Design pattern** :
+- Héritage de widgets PyQt6 standard
+- Encapsulation des styles dans les classes
+- Réutilisabilité maximale
+
+**Principes UX** :
+- Hiérarchie visuelle basée sur l'importance des actions
+- Semantic design (couleur = signification)
+- Guidage de l'utilisateur par la couleur
+- Prévention des erreurs (rouge pour destructif)
+
+---
+
 ## v1.5.2 - 2025-10-25
 
 ### 🎬 Workflow Manuel - Import JSON
