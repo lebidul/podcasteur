@@ -9,6 +9,15 @@ from PyQt6.QtWidgets import (
     QProgressBar, QCheckBox, QGroupBox, QMessageBox,
     QComboBox, QDoubleSpinBox, QApplication
 )
+
+from src.gui.widgets import (
+    PrimaryButton, SecondaryButton, DangerButton,
+    SuccessButton, NeutralButton, StyledCheckBox,
+    StyledComboBox, StyledSlider, StyledSpinBox,
+    StyledDoubleSpinBox, StyledComboBox, StyledScrollArea
+)
+
+
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -47,7 +56,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialise l'interface utilisateur"""
         self.setWindowTitle("Podcasteur v1.4.0 - Éditeur de podcasts IA")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(800, 550)
+        self.resize(900, 650)
 
         # Ajouter l'icône
         icon_path = self._get_icon_path()
@@ -85,11 +95,11 @@ class MainWindow(QMainWindow):
         files_layout = QVBoxLayout()
 
         files_buttons = QHBoxLayout()
-        btn_add_files = QPushButton("Ajouter fichiers")
+        btn_add_files = NeutralButton("Ajouter fichiers")
         btn_add_files.clicked.connect(self._add_files)
-        btn_add_folder = QPushButton("Ajouter dossier")
+        btn_add_folder = NeutralButton("Ajouter dossier")
         btn_add_folder.clicked.connect(self._add_folder)
-        btn_clear = QPushButton("Effacer tout")
+        btn_clear = DangerButton("Effacer tout")
         btn_clear.clicked.connect(self._clear_files)
 
         files_buttons.addWidget(btn_add_files)
@@ -98,7 +108,7 @@ class MainWindow(QMainWindow):
         files_buttons.addStretch()
 
         self.files_list = QListWidget()
-        self.files_list.setMaximumHeight(150)
+        self.files_list.setMaximumHeight(100)
 
         files_layout.addLayout(files_buttons)
         files_layout.addWidget(self.files_list)
@@ -123,10 +133,10 @@ class MainWindow(QMainWindow):
         json_layout = QVBoxLayout()
 
         json_buttons_layout = QHBoxLayout()
-        btn_import_json = QPushButton("📁 Importer découpage JSON")
+        btn_import_json = NeutralButton("📁 Importer découpage JSON")
         btn_import_json.clicked.connect(self._import_json_decoupage)
         btn_import_json.setStyleSheet("padding: 8px; font-weight: bold;")
-        btn_clear_json = QPushButton("Effacer")
+        btn_clear_json = DangerButton("Effacer")
         btn_clear_json.clicked.connect(self._clear_json_decoupage)
 
         json_buttons_layout.addWidget(btn_import_json)
@@ -232,7 +242,7 @@ class MainWindow(QMainWindow):
         self.mix_file_input.setPlaceholderText("Aucun fichier sélectionné")
         mix_layout.addWidget(self.mix_file_input)
 
-        self.btn_browse_mix = QPushButton("Parcourir")
+        self.btn_browse_mix = NeutralButton("Parcourir")
         self.btn_browse_mix.clicked.connect(self._browse_mix_file)
         self.btn_browse_mix.setEnabled(False)
         mix_layout.addWidget(self.btn_browse_mix)
@@ -250,7 +260,7 @@ class MainWindow(QMainWindow):
         self.transcription_file_input.setPlaceholderText("Aucun fichier sélectionné")
         trans_layout.addWidget(self.transcription_file_input)
 
-        self.btn_browse_trans = QPushButton("Parcourir")
+        self.btn_browse_trans = NeutralButton("Parcourir")
         self.btn_browse_trans.clicked.connect(self._browse_transcription_file)
         self.btn_browse_trans.setEnabled(False)
         trans_layout.addWidget(self.btn_browse_trans)
@@ -263,7 +273,7 @@ class MainWindow(QMainWindow):
         self.sortie_input = QLineEdit()
         self.sortie_input.setPlaceholderText("Sélectionnez un dossier de sortie...")
         sortie_layout.addWidget(self.sortie_input, 1)
-        btn_browse_sortie = QPushButton("Parcourir")
+        btn_browse_sortie = NeutralButton("Parcourir")
         btn_browse_sortie.clicked.connect(self._browse_sortie_folder)
         sortie_layout.addWidget(btn_browse_sortie)
         options_layout.addLayout(sortie_layout)
@@ -291,14 +301,17 @@ class MainWindow(QMainWindow):
         # Bouton lancer
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        self.btn_start = QPushButton("🚀 Décollage")
+        self.btn_start = PrimaryButton("🚀 Décollage")
         self.btn_start.setStyleSheet("padding: 10px; font-size: 14px; font-weight: bold;")
         self.btn_start.clicked.connect(self._start_auto_workflow)
         btn_layout.addWidget(self.btn_start)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        return widget
+        # Wrapper dans scroll
+        scroll = StyledScrollArea()
+        scroll.setWidget(widget)
+        return scroll  # Retourner scroll au lieu de content_widget
 
     def _create_manual_tab(self):
         """Crée l'onglet workflow manuel"""
@@ -321,7 +334,7 @@ class MainWindow(QMainWindow):
         theme_layout = QHBoxLayout()
         theme_layout.addWidget(QLabel("Thème de l'interface :"))
 
-        self.theme_toggle = QPushButton("☀️ Mode clair")
+        self.theme_toggle = SecondaryButton("☀️ Mode clair")
         self.theme_toggle.setCheckable(True)
         self.theme_toggle.setChecked(self.dark_mode)
         self.theme_toggle.clicked.connect(self._toggle_theme)
@@ -390,7 +403,7 @@ class MainWindow(QMainWindow):
         self.intro_input = QLineEdit(
             self.config.get('elements_sonores', {}).get('generique_debut', {}).get('fichier', 'assets/intro.wav')
         )
-        btn_intro = QPushButton("Parcourir")
+        btn_intro = NeutralButton("Parcourir")
         btn_intro.clicked.connect(lambda: self._browse_file(self.intro_input))
         intro_layout.addWidget(self.intro_input)
         intro_layout.addWidget(btn_intro)
@@ -416,7 +429,7 @@ class MainWindow(QMainWindow):
         self.outro_input = QLineEdit(
             self.config.get('elements_sonores', {}).get('generique_fin', {}).get('fichier', 'assets/outro.wav')
         )
-        btn_outro = QPushButton("Parcourir")
+        btn_outro = NeutralButton("Parcourir")
         btn_outro.clicked.connect(lambda: self._browse_file(self.outro_input))
         outro_layout.addWidget(self.outro_input)
         outro_layout.addWidget(btn_outro)
@@ -508,7 +521,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(ia_group)
 
         # Bouton sauvegarder
-        btn_save = QPushButton("💾 Sauvegarder la configuration")
+        btn_save = SecondaryButton("💾 Sauvegarder la configuration")
         btn_save.setStyleSheet("padding: 8px; font-weight: bold;")
         btn_save.clicked.connect(self._save_config)
         layout.addWidget(btn_save)

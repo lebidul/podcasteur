@@ -85,11 +85,11 @@ self.btn_backward = QPushButton("⏪ -5s")
 self.btn_forward = QPushButton("⏩ +5s")
 
 # Volume
-self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+self.volume_slider = StyledSlider(Qt.Orientation.Horizontal)
 self.volume_label = QLabel("70%")
 
 # Position
-self.position_slider = QSlider(Qt.Orientation.Horizontal)
+self.position_slider = StyledSlider(Qt.Orientation.Horizontal)
 self.time_label = QLabel("00:00")
 self.duration_label = QLabel("00:00")
 
